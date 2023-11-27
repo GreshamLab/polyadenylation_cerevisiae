@@ -1,1 +1,0 @@
-chmod +x /home/sz4633/polyadenylation_cerevisiae/data/star_executable/STAR
