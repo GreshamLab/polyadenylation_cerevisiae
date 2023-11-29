@@ -1,4 +1,5 @@
 /data
 /results
 /code/.snakemake
-code/star_executable/STAR
+/code/star_executable/STAR
+/code/snake.*

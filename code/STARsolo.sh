@@ -3,11 +3,11 @@ GENOME_PATH = "/home/sz4633/polyadenylation_cerevisiae/data/ncbi_dataset/GCA_000
 GENOME_FASTA = "GCA_0001460452_R64_genomic.fna"
 GENOME_GTF = "genomic.gtf"
 
-SAMPLE_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
-SAMPLE = "RAPA1"
+FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
+FASTQ_FILE = ["RAPA1", "RAPA2"]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
-THREADS = 12
+THREADS = 16
 
 OUTPUT_PATH = "/home/sz4633/polyadenylation_cerevisiae/results/"
 
@@ -15,7 +15,9 @@ OUTPUT_PATH = "/home/sz4633/polyadenylation_cerevisiae/results/"
 #Workflow
 rule all:
     input:
-        directory(os.path.join(f"{OUTPUT_PATH}", f"{SAMPLE}"))
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}"), sample = FASTQ_FILE)
+
+    threads: THREADS
 
 
 rule build_genome_index:
@@ -25,6 +27,8 @@ rule build_genome_index:
 
     output:
         directory(os.path.join(f"{OUTPUT_PATH}", f"star_index"))
+
+    threads: THREADS
 
     shell:
         """
@@ -45,12 +49,14 @@ rule build_genome_index:
 rule map_fastq_to_genome:
     input:
         os.path.join(f"{OUTPUT_PATH}", f"star_index"),
-        os.path.join(f"{SAMPLE_PATH}", f"{SAMPLE}-LIB_R1.fastq.gz"),
-        os.path.join(f"{SAMPLE_PATH}", f"{SAMPLE}-LIB_R2.fastq.gz")
+        os.path.join(f"{FASTQ_PATH}","{sample}-LIB_R1.fastq.gz"),
+        os.path.join(f"{FASTQ_PATH}","{sample}-LIB_R2.fastq.gz")
 
     output:
-        directory(os.path.join(f"{OUTPUT_PATH}", f"{SAMPLE}/"))
+        directory(os.path.join(f"{OUTPUT_PATH}", "{sample}", ""))
 
+    threads: THREADS
+    
     shell:
         """
             mkdir -p {output}
