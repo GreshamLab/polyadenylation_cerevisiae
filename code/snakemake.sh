@@ -13,6 +13,7 @@
 
 module purge
 module load snakemake/6.12.3
+module load samtools/intel/1.14
 module load python/intel/3.8.6
 
 export PYTHONUNBUFFERED=TRUE

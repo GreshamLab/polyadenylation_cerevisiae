@@ -15,7 +15,9 @@ OUTPUT_PATH = "/home/sz4633/polyadenylation_cerevisiae/results/"
 #Workflow
 rule all:
     input:
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"), sample = FASTQ_FILE)
 
     threads: THREADS
 
@@ -53,13 +55,14 @@ rule map_fastq_to_genome:
         os.path.join(f"{FASTQ_PATH}","{sample}-LIB_R2.fastq.gz")
 
     output:
-        directory(os.path.join(f"{OUTPUT_PATH}", "{sample}", ""))
-
+        directory(os.path.join(f"{OUTPUT_PATH}", "{sample}", "")),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
+    
     threads: THREADS
     
     shell:
         """
-            mkdir -p {output}
+            mkdir -p {output[0]} &&
 
             star_executable/STAR \
              --runThreadN {THREADS} \
@@ -79,10 +82,25 @@ rule map_fastq_to_genome:
              --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts \
              --soloCellFilter EmptyDrops_CR \
              --outSAMattributes All \
-             --outSAMtype BAM SortedByCoordinate \
+             --outSAMtype BAM Unsorted \
              --quantMode TranscriptomeSAM GeneCounts \
              --outReadsUnmapped Fastx \
-             -- readMapNumber 10000 \
-             --outFileNamePrefix {output}/
+             --readMapNumber 10000 \
+             --outFileNamePrefix {output[0]}/
+
+        """
+
+rule sort_bam_files:
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
+    
+    threads: THREADS
+
+    shell:
+        """
+        samtools sort {input} -o {output}
 
         """
