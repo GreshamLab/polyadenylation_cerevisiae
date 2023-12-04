@@ -7,7 +7,7 @@
 #SBATCH	--output=snake.%j.out
 #SBATCH	--error=snake.%j.err
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=12
+#SBATCH --ntasks-per-node=8
 #SBATCH --mem=80000
 #SBATCH --time 47:59:59
 

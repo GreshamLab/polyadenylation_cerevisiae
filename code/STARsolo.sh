@@ -7,10 +7,11 @@ FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
 FASTQ_FILE = ["RAPA1", "RAPA2"]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
-THREADS = 16
+THREADS = 8
 
 OUTPUT_PATH = "/home/sz4633/polyadenylation_cerevisiae/results/"
-
+STAR_PATH = "/home/sz4633/polyadenylation_cerevisiae/code/star_executable"
+CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 
 #Workflow
 rule all:
@@ -20,7 +21,6 @@ rule all:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"), sample = FASTQ_FILE)
 
     threads: THREADS
-
 
 rule build_genome_index:
     input:
@@ -36,7 +36,7 @@ rule build_genome_index:
         """
             mkdir -p {output}
 
-            star_executable/STAR \
+            {STAR_PATH}/STAR \
              --runThreadN {THREADS} \
              --runMode genomeGenerate \
              --genomeDir {output} \
@@ -63,8 +63,9 @@ rule map_fastq_to_genome:
     shell:
         """
             mkdir -p {output[0]} &&
+            cd {output[0]} &&
 
-            star_executable/STAR \
+            {STAR_PATH}/STAR \
              --runThreadN {THREADS} \
              --genomeDir {input[0]} \
              --readFilesCommand gunzip -c \
@@ -84,9 +85,9 @@ rule map_fastq_to_genome:
              --outSAMattributes All \
              --outSAMtype BAM Unsorted \
              --quantMode TranscriptomeSAM GeneCounts \
-             --outReadsUnmapped Fastx \
-             --readMapNumber 10000 \
-             --outFileNamePrefix {output[0]}/
+             --outReadsUnmapped Fastx &&
+
+            cd {CODE_FOLDER}
 
         """
 
@@ -95,12 +96,14 @@ rule sort_bam_files:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
-    
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"),
+        temporary("/scratch/sz4633/samtools/{sample}")
+
+
     threads: THREADS
 
     shell:
         """
-        samtools sort {input} -o {output}
+        samtools sort {input} -o {output[0]} -T {output[1]}
 
         """
