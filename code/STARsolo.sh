@@ -7,10 +7,10 @@ FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
 FASTQ_FILE = ["RAPA1", "RAPA2"]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
-THREADS = 8
+THREADS = 16
 
-OUTPUT_PATH = "/home/sz4633/polyadenylation_cerevisiae/results/"
-STAR_PATH = "/home/sz4633/polyadenylation_cerevisiae/code/star_executable"
+OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae/results/"
+STAR_PATH = "/scratch/sz4633/polyadenylation_cerevisiae/code/star_executable"
 CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 
 #Workflow
@@ -98,7 +98,6 @@ rule sort_bam_files:
     output:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"),
         temporary("/scratch/sz4633/samtools/{sample}")
-
 
     threads: THREADS
 
