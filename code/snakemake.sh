@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 #SBATCH	--verbose
-#SBATCH	--job-name=snakemake
+#SBATCH	--job-name=STARsolo
 #SBATCH --mail-type=END
 #SBATCH	--mail-user=sz4633@nyu.edu
 #SBATCH	--output=snake.%j.out
 #SBATCH	--error=snake.%j.err
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=16
 #SBATCH --mem=80000
 #SBATCH --time 47:59:59
 
