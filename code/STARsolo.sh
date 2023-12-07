@@ -109,5 +109,5 @@ rule sort_bam_files:
     shell:
         """
         mkdir -p {output[1]} &&
-        samtools sort {input} -o {output[0]} -T {output[1]}
+        samtools sort {input} -o {output[0]} -T {output[1]} -@ {THREADS}
         """
