@@ -23,7 +23,8 @@ rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}"), sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE)
 
     threads: THREADS
 
@@ -110,4 +111,23 @@ rule sort_bam_files:
         """
         mkdir -p {output[1]} &&
         samtools sort {input} -o {output[0]} -T {output[1]} -@ {THREADS}
+        """
+
+rule index_bam_files:
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "{sample}", "")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai")
+
+    threads: THREADS
+
+    shell:
+        """
+            cd {input[0]} &&
+
+            samtools index Sorted.bam -@{THREADS} &&
+
+            cd {CODE_FOLDER}
+
         """
