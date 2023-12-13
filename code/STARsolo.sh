@@ -24,7 +24,8 @@ rule all:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}"), sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam"), sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls"), sample = FASTQ_FILE)
 
     threads: THREADS
 
@@ -110,7 +111,9 @@ rule sort_bam_files:
     shell:
         """
         mkdir -p {output[1]} &&
+        
         samtools sort {input} -o {output[0]} -T {output[1]} -@ {THREADS}
+
         """
 
 rule index_bam_files:
@@ -129,5 +132,29 @@ rule index_bam_files:
             samtools index Sorted.bam -@{THREADS} &&
 
             cd {CODE_FOLDER}
+
+        """
+
+rule find_peaks:
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls")
+    
+    params:
+        outdir = os.path.join(f"{OUTPUT_PATH}", "macs3", "")
+
+    threads: THREADS
+
+    shell:
+        """
+            macs3 callpeak -t {input} \
+                --name {wildcards.sample} \
+                --gsize 1.2e7 \
+                --nomodel \
+                --shift -75 \
+                --extsize 150 \
+                --outdir {params.outdir}
 
         """
