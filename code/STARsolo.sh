@@ -22,12 +22,8 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 #Workflow
 rule all:
     input:
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"), sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_intersect"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "bedtools/{sample}_intersect"), sample = FASTQ_FILE)
 
     threads: THREADS
 
