@@ -1,7 +1,7 @@
 #Parameters
-GENOME_PATH = "/home/sz4633/polyadenylation_cerevisiae/data/ncbi_dataset/GCA_0001460452/"
-GENOME_FASTA = "GCA_0001460452_R64_genomic.fna"
-GENOME_GTF = "genomic.gtf"
+GENOME_PATH = "/home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/"
+GENOME_FASTA = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa"
+GENOME_GTF = "Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf"
 
 FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
 FASTQ_FILE = ["RAPA1", "RAPA2", "RAPA3", "RAPA4", 
@@ -11,9 +11,10 @@ FASTQ_FILE = ["RAPA1", "RAPA2", "RAPA3", "RAPA4",
             ]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
+INTERSECT_FILE = "/home/sz4633/polyadenylation_cerevisiae/data/Saccharomyces_cerevisiae.R64-1-1.CLEAN.bed"
 THREADS = 16
 
-OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae/results/"
+OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae/"
 TMP_DIR = "/scratch/sz4633/polyadenylation_cerevisiae/tmp/"
 STAR_PATH = "/home/sz4633/polyadenylation_cerevisiae/code/star_executable"
 CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
@@ -25,7 +26,8 @@ rule all:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam"), sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam"), sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_intersect"), sample = FASTQ_FILE)
 
     threads: THREADS
 
@@ -116,7 +118,7 @@ rule sort_bam_files:
 
         """
 
-rule index_bam_files:
+rule index_bam_files_for_IGV:
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}", "")
 
@@ -157,4 +159,24 @@ rule find_peaks:
                 --extsize 150 \
                 --outdir {params.outdir}
 
+        """
+
+rule bedtools_intersect:
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls"),
+        os.path.join(f"{INTERSECT_FILE}")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "bedtools/{sample}_intersect")
+
+    params:
+        outdir = os.path.join(f"{OUTPUT_PATH}", "bedtools", "")
+
+    shell:
+        """
+            cd {params.outdir}
+
+            bedtools intersect -a {input[0]} -b {input[1]} > {output}
+
+            cd {CODE_FOLDER}
         """
