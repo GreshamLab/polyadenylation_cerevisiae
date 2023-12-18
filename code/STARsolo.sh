@@ -159,7 +159,7 @@ rule find_peaks:
 
 rule bedtools_intersect:
     input:
-        os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls"),
+        os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
 
     output:
@@ -172,7 +172,7 @@ rule bedtools_intersect:
         """
             cd {params.outdir}
 
-            bedtools intersect -a {input[0]} -b {input[1]} > {output}
+            bedtools intersect -a {input[0]} -b {input[1]} > {output} -wa -wb
 
             cd {CODE_FOLDER}
         """
