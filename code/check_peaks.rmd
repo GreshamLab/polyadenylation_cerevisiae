@@ -1,0 +1,51 @@
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+
+setwd("/scratch/sz4633/polyadenylation_cerevisiae/bedtools/")
+
+#import peak files as list
+peak_files <- list.files(pattern = "RAPA*")
+peaks_list <- lapply(peak_files, 
+                     read.csv2,
+                     sep = "\t",
+                     header = F,
+                     col.names = c("chromosome_number",
+                                   "peak_start",
+                                   "peak_end",
+                                   "name",
+                                   "score",
+                                   "skip",
+                                   "Fold_Change_at_peak_summit",
+                                   "log10pvalue_at_peak_summit",
+                                   "log10qvalue_at_peak_summit",
+                                   "relative_summit_position_to_peak_start",
+                                   "chromosome_number_2",
+                                   "gene_start",
+                                   "gene_end",
+                                   "gene_name",
+                                   "tss",
+                                   "strand"))
+```
+
+```{r}
+#assign names to peak files in list
+peak_files <- str_remove(peak_files, "_intersect")
+names(peaks_list) <- peak_files
+
+#extract distance between peaks of each gene 
+peaks <- peaks_list %>% 
+  bind_rows(.id = "sample") %>%
+  mutate(peak_summit = peak_start + relative_summit_position_to_peak_start) %>%
+  select(c("peak_summit",
+           "gene_name")) %>%
+  dplyr::group_by(gene_name) %>%
+  dplyr::summarise(peak_distance = max(peak_summit) - min(peak_summit))
+
+plot(hist(peaks$peak_distance))
+
+```
+
+Checking genes on IGV I noticed some peaks are bimodal peaks and sometimes these peaks are assigned to two genes - check how many i have and which ones they are
+
+
