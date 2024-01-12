@@ -48,7 +48,7 @@ rule build_genome_index:
              --genomeFastaFiles {input[0]} \
              --sjdbGTFfile {input[1]} \
              --sjdbOverhang 100 \
-             --genomeSAindexNbases 10 \
+             --genomeSAindexNbases 10 `#calculated for small genomes as log2(GenomeLength)/2 - 1`\
              --outFileNamePrefix genome_index
 
         """
@@ -77,18 +77,18 @@ rule map_fastq_to_genome:
              --readFilesIn {input[2]} {input[1]} \
              --soloType CB_UMI_Simple \
              --soloCBwhitelist {WHITELIST} \
-             --soloCBstart 1 \
-             --soloCBlen 16 \
-             --soloUMIstart 17 \
-             --soloUMIlen 12 \
-             --soloBarcodeReadLength 1 \
-             --soloBarcodeMate 0 \
-             --soloUMIdedup 1MM_CR \
-             --soloUMIfiltering MultiGeneUMI_CR \
-             --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts \
-             --soloCellFilter EmptyDrops_CR \
+             --soloCBstart 1 `#barcode start`\
+             --soloCBlen 16 `#barcode length`\
+             --soloUMIstart 17 `#UMI start`\
+             --soloUMIlen 12 `#UMI length`\
+             --soloBarcodeReadLength 1 `#length of the barcode read, 1: equal to sum of soloCBlen+soloUMIlen`\
+             --soloBarcodeMate 0 `#which read mate contains the barcode: 0 for barcode sequence is on separate read, which should always be the last file in the --readFilesIn listed`\
+             --soloUMIdedup 1MM_CR `#type of UMI deduplication (collapsing) algorithm: 1MM_CR for CellRanger2-4 algorithm for 1MM UMI collapsing`\
+             --soloUMIfiltering MultiGeneUMI_CR `#remove UMIs with N and homopolymers and remove lower-count UMIs that map to more than one gene`\
+             --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts `#option for matching the Cell Barcodes to the WhiteList`\
+             --soloCellFilter EmptyDrops_CR `#advanced filtering based on the EmptyDrop algorithm developed by DOI 10.1186/s13059-019-1662-y`\
              --outSAMattributes All \
-             --outSAMtype BAM Unsorted \
+             --outSAMtype BAM Unsorted `#sorting with star is inefficient, so I sort afterwards with samtools`\
              --quantMode TranscriptomeSAM GeneCounts \
              --outReadsUnmapped Fastx &&
 
@@ -97,6 +97,7 @@ rule map_fastq_to_genome:
         """
 
 rule sort_bam_files:
+#samtools works faster than star for sorting
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
@@ -115,6 +116,7 @@ rule sort_bam_files:
         """
 
 rule index_bam_files_for_IGV:
+#index the bam file for viewing in IGV
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}", "")
 
@@ -134,14 +136,15 @@ rule index_bam_files_for_IGV:
         """
 
 rule find_peaks:
+#use MACS3 to find peaks - looks at all the reads present in the sample and finds where peaks are
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.xls")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.xls")
     
     params:
-        outdir = os.path.join(f"{OUTPUT_PATH}", "macs3", "")
+        outdir = os.path.join(f"{OUTPUT_PATH}", "peaks_macs3", "")
 
     threads: THREADS
 
@@ -158,8 +161,9 @@ rule find_peaks:
         """
 
 rule bedtools_intersect:
+#intersect the peak location (from macs3 bed file) with the gene name in INTERSECT_FILE
     input:
-        os.path.join(f"{OUTPUT_PATH}", "macs3/{sample}_peaks.narrowPeak"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
 
     output:
