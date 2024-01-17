@@ -141,7 +141,7 @@ rule find_peaks:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.xls")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak")
     
     params:
         outdir = os.path.join(f"{OUTPUT_PATH}", "peaks_macs3", "")
