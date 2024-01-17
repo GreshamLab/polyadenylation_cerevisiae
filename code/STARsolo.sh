@@ -152,10 +152,11 @@ rule find_peaks:
         """
             macs3 callpeak -t {input} \
                 --name {wildcards.sample} \
-                --gsize 1.2e7 \
-                --nomodel \
-                --shift -75 \
-                --extsize 150 \
+                --gsize 1.2e7 `#mappable genome size, defined as the genome size which can be sequenced.` \
+                --nomodel `#turn off model construction`\
+                --shift -75 `#extend reads from 5’ to 3’ `\
+                --extsize -150 `#extend reads in 5’->3’ direction to fix-sized fragments`\
+                --max-gap 10 `#max gap between regions`\
                 --outdir {params.outdir}
 
         """
