@@ -1,51 +1,212 @@
+---
+title: "Check peaks"
+author: "Simone Zaghen"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document: 
+    toc: true
+    number_section: true
+    toc_float: 
+      collapsed: false
+      smooth_scroll: true
+---
+
+# Load packages
 
 ```{r, warning=FALSE, message=FALSE}
 library(tidyverse)
+library(knitr)
+library(kableExtra)
 
+```
+
+
+# Import the data 
+
+```{r, warning=FALSE, message=FALSE}
 setwd("/scratch/sz4633/polyadenylation_cerevisiae/bedtools/")
 
 #import peak files as list
 peak_files <- list.files(pattern = "RAPA*")
-peaks_list <- lapply(peak_files, 
+rawdata <- lapply(peak_files, 
                      read.csv2,
                      sep = "\t",
                      header = F,
-                     col.names = c("chromosome_number",
+                     col.names = c("chromosome_number_macs",
                                    "peak_start",
                                    "peak_end",
-                                   "name",
+                                   "peak_name",
                                    "score",
-                                   "skip",
+                                   "strand_macs",
                                    "Fold_Change_at_peak_summit",
                                    "log10pvalue_at_peak_summit",
                                    "log10qvalue_at_peak_summit",
                                    "relative_summit_position_to_peak_start",
-                                   "chromosome_number_2",
+                                   "chromosome",
                                    "gene_start",
                                    "gene_end",
                                    "gene_name",
                                    "tss",
                                    "strand"))
-```
 
-```{r}
 #assign names to peak files in list
 peak_files <- str_remove(peak_files, "_intersect")
-names(peaks_list) <- peak_files
-
-#extract distance between peaks of each gene 
-peaks <- peaks_list %>% 
-  bind_rows(.id = "sample") %>%
-  mutate(peak_summit = peak_start + relative_summit_position_to_peak_start) %>%
-  select(c("peak_summit",
-           "gene_name")) %>%
-  dplyr::group_by(gene_name) %>%
-  dplyr::summarise(peak_distance = max(peak_summit) - min(peak_summit))
-
-plot(hist(peaks$peak_distance))
+names(rawdata) <- peak_files
 
 ```
 
-Checking genes on IGV I noticed some peaks are bimodal peaks and sometimes these peaks are assigned to two genes - check how many i have and which ones they are
+# Calculate important statistics
 
+- Gene length
+- Peak width: info needed to filter out peaks that are too broad
+- Peak position on chromosome
+- Peak position on gene, compared to the TSS: understand where the peak is in the gene
+
+```{r}
+peaks <- rawdata %>% 
+  map(~.x %>%
+        select(-c("chromosome_number_macs", #remove non important cols
+                  "strand_macs")) %>%
+        mutate(gene_length = gene_end - gene_start, #calculate gene length
+               peak_width = peak_end - peak_start, #calculate peak width
+               peak_summit_position = peak_start + relative_summit_position_to_peak_start, #calculate peak position on chromosome
+               peak_summit_relative_to_tss = #calculate relative peak position compared to tss
+                 ifelse(strand == "+", #based on on which strand the gene is, calculating the position is different
+                        peak_summit_position - tss,
+                        tss - peak_summit_position)))
+
+```
+
+# Check distributions
+
+## Peak width distribution
+
+```{r, warning=FALSE, message=FALSE}
+peaks %>%
+  bind_rows(.id = "sample") %>% #create one df
+  ggplot(aes(x = peak_width)) + 
+  geom_histogram() +
+  xlim(0,2500)
+
+```
+
+## Check how many peaks are assigned to more than one gene
+
+Peaks can be broad and can overlap with multiple genes. When this happens, a single peak (which has a unique peak name) will be assigned to multiple genes. For example peak_1 might be assigned to gene A and gene B. 
+
+![Example from IGV of what i mean](../igv_images/img_multiple_genes_per_peak.png)
+
+Here we check how many peaks have been assigned to multiple genes. 
+
+```{r }
+peaks_assigned_to_genes <- data.frame()
+
+for (i in 1:length(peaks)) {
+  tmp <- as.data.frame(table(peaks[[i]]$peak_name))
+  tmp <- as.data.frame(table(tmp$Freq))
+  tmp <- cbind(tmp, names(peaks[i]))
+  peaks_assigned_to_genes <- rbind(peaks_assigned_to_genes, tmp)
+}
+
+colnames(peaks_assigned_to_genes) <- c("genes_assigned_to_peak", 
+                                       "number_of_peaks", 
+                                       "sample")
+
+peaks_assigned_to_genes <-peaks_assigned_to_genes %>%
+  group_by(genes_assigned_to_peak) %>%
+  summarise(number_of_peaks = sum(number_of_peaks))
+
+kable(peaks_assigned_to_genes) %>%
+  kable_styling(full_width = F, position = "left")
+
+```
+
+## Check how many genes have more than one peak
+
+One single gene might contain multiple peaks. This is what we are looking for as it is a sign of different 3'UTR.
+![Example from IGV of what i mean](../igv_images/img_multiple_peaks_per_gene.png)
+
+```{r}
+peaks_per_gene <- data.frame()
+
+for (i in 1:length(peaks)) {
+  tmp <- as.data.frame(table(peaks[[i]]$gene_name))
+  tmp <- as.data.frame(table(tmp$Freq))
+  tmp <- cbind(tmp, names(peaks[i]))
+  peaks_per_gene <- rbind(peaks_per_gene, tmp)
+}
+rm(tmp,i, peak_files)
+colnames(peaks_per_gene) <- c("peaks_per_gene", "frequency", "sample")
+
+peaks_per_gene <- peaks_per_gene %>%
+        group_by(peaks_per_gene) %>%
+        mutate(peaks_per_gene = as.numeric(peaks_per_gene)) %>%
+        summarise(frequency = sum(frequency))
+
+kable(peaks_per_gene) %>%
+    kable_styling(full_width = F, position = "left")
+
+```
+
+# Filter out some peaks
+
+## Remove peaks whose summit is too close to the TSS
+
+Some peaks are broad enough that one of their tails is very close to the TSS of a gene. These peaks are for the following gene. However bedtools intersect assign that peak to both genes since it technically overlaps - here remove these types of peaks. 
+![Example from IGV of what i mean](../igv_images/peaks_close_to_tss.png)
+
+```{r}
+peaks2 <- peaks %>% 
+  map(~.x %>%
+        filter(peak_summit_relative_to_tss > 50))
+
+```
+
+
+## Remove peaks that are too broad
+
+Peaks that have a width above 500 will be filtered out since they are too broad
+HERE INSERT IMAGE TO SHOW WHAT I AM TRYING TO REMOVE - ALSO ADD A WHY ID WANT TO DO THAT
+
+```{r}
+peaks3 <- peaks2 %>% 
+  map(~.x %>%
+        filter(peak_width < 500))
+
+```
+
+
+This snippet filters genes which have more than two peaks
+
+```{r}
+peaks3 <- peaks2 %>% 
+  map(~.x %>%
+        group_by(gene_name) %>% 
+        filter(n()>2))
+
+```
+
+
+
+
+```{r, eval=FALSE}
+group_by(gene_name) %>%
+  mutate(standard_dev = sd(peak_summit_relative_to_gene_start)) %>%
+  group_by(gene_name) %>%
+  mutate(relative_peak_intensity = max(score)) %>%
+  mutate(relative_peak_intensity = score/relative_peak_intensity)
+
+```
+
+
+```{r, eval=FALSE}
+ggplot(data = peaks, 
+       aes(x = peak_summit_relative_to_gene_start)) + 
+  geom_histogram()
+
+ggplot(data = peaks, 
+       aes(x = standard_dev)) + 
+  geom_histogram()
+
+```
 
