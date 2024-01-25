@@ -20,7 +20,6 @@ library(kableExtra)
 
 ```
 
-
 # Import the data 
 
 ```{r, warning=FALSE, message=FALSE}
@@ -32,7 +31,7 @@ rawdata <- lapply(peak_files,
                      read.csv2,
                      sep = "\t",
                      header = F,
-                     col.names = c("chromosome_number_macs",
+                     col.names = c("chromosome",
                                    "peak_start",
                                    "peak_end",
                                    "peak_name",
@@ -42,7 +41,7 @@ rawdata <- lapply(peak_files,
                                    "log10pvalue_at_peak_summit",
                                    "log10qvalue_at_peak_summit",
                                    "relative_summit_position_to_peak_start",
-                                   "chromosome",
+                                   "chromosome_position",
                                    "gene_start",
                                    "gene_end",
                                    "gene_name",
@@ -52,6 +51,7 @@ rawdata <- lapply(peak_files,
 #assign names to peak files in list
 peak_files <- str_remove(peak_files, "_intersect")
 names(rawdata) <- peak_files
+rm(peak_files)
 
 ```
 
@@ -65,8 +65,7 @@ names(rawdata) <- peak_files
 ```{r}
 peaks <- rawdata %>% 
   map(~.x %>%
-        select(-c("chromosome_number_macs", #remove non important cols
-                  "strand_macs")) %>%
+        select(-c("chromosome_position")) %>% #remove non important cols
         mutate(gene_length = gene_end - gene_start, #calculate gene length
                peak_width = peak_end - peak_start, #calculate peak width
                peak_summit_position = peak_start + relative_summit_position_to_peak_start, #calculate peak position on chromosome
@@ -135,7 +134,7 @@ for (i in 1:length(peaks)) {
   tmp <- cbind(tmp, names(peaks[i]))
   peaks_per_gene <- rbind(peaks_per_gene, tmp)
 }
-rm(tmp,i, peak_files)
+rm(tmp,i)
 colnames(peaks_per_gene) <- c("peaks_per_gene", "frequency", "sample")
 
 peaks_per_gene <- peaks_per_gene %>%
@@ -155,58 +154,86 @@ kable(peaks_per_gene) %>%
 Some peaks are broad enough that one of their tails is very close to the TSS of a gene. These peaks are for the following gene. However bedtools intersect assign that peak to both genes since it technically overlaps - here remove these types of peaks. 
 ![Example from IGV of what i mean](../igv_images/peaks_close_to_tss.png)
 
+Quantify how many of these instances we have:
+
 ```{r}
-peaks2 <- peaks %>% 
+kable(sapply(peaks %>% 
+               map(~.x %>%
+                     filter(peak_summit_relative_to_tss < 50)),
+             nrow)) %>%
+  kable_styling(full_width = F, position = "left")
+
+```
+
+Remove them
+
+```{r}
+peaks <- peaks %>% 
   map(~.x %>%
         filter(peak_summit_relative_to_tss > 50))
 
 ```
 
-
 ## Remove peaks that are too broad
 
 Peaks that have a width above 500 will be filtered out since they are too broad
-HERE INSERT IMAGE TO SHOW WHAT I AM TRYING TO REMOVE - ALSO ADD A WHY ID WANT TO DO THAT
+
+Quantify how many of these instances we have:
 
 ```{r}
-peaks3 <- peaks2 %>% 
+tmp1 <- as.data.frame(sapply(peaks %>% 
+                 map(~.x %>%
+                       filter(peak_width > 500)),
+             nrow))
+
+tmp2 <- as.data.frame(sapply(peaks %>% 
+                 map(~.x %>%
+                       filter(peak_width > 600)),
+             nrow))
+tmp <- cbind(tmp1,tmp2) %>% rownames_to_column()
+colnames(tmp) <- c("Sample", "Cutoff_500", "Cutoff_600")
+rm(tmp1, tmp2)
+
+kable(tmp) %>%
+  kable_styling(full_width = F, position = "left")
+
+```
+
+Remove them 
+
+```{r }
+peaks <- peaks %>% 
   map(~.x %>%
         filter(peak_width < 500))
 
 ```
 
+## Remove genes with only one peak
 
-This snippet filters genes which have more than two peaks
+Now that we filtered out most of the unwanted peaks, let's find the genes with more than one peak! 
 
 ```{r}
-peaks3 <- peaks2 %>% 
+peaks <- peaks %>% 
   map(~.x %>%
         group_by(gene_name) %>% 
-        filter(n()>2))
+        filter(n()>1))
 
 ```
 
+# Export the peaks
 
+```{r, warning=FALSE}
+if (!dir.exists("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/"))
+  {dir.create("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/")}
 
+setwd("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/")
 
-```{r, eval=FALSE}
-group_by(gene_name) %>%
-  mutate(standard_dev = sd(peak_summit_relative_to_gene_start)) %>%
-  group_by(gene_name) %>%
-  mutate(relative_peak_intensity = max(score)) %>%
-  mutate(relative_peak_intensity = score/relative_peak_intensity)
-
+for (i in 1:length(peaks)) {
+  write.csv2(peaks[[i]], 
+             file = paste0(names(peaks)[i], ".bed"), 
+             row.names = F)
+}
 ```
 
 
-```{r, eval=FALSE}
-ggplot(data = peaks, 
-       aes(x = peak_summit_relative_to_gene_start)) + 
-  geom_histogram()
-
-ggplot(data = peaks, 
-       aes(x = standard_dev)) + 
-  geom_histogram()
-
-```
 
