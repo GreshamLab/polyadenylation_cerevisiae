@@ -93,7 +93,7 @@ peaks %>%
 
 Peaks can be broad and can overlap with multiple genes. When this happens, a single peak (which has a unique peak name) will be assigned to multiple genes. For example peak_1 might be assigned to gene A and gene B. 
 
-![Example from IGV of what i mean](../igv_images/img_multiple_genes_per_peak.png)
+![Example from IGV of what i mean](/home/sz4633/polyadenylation_cerevisiae/igv_images/img_multiple_genes_per_peak.png)
 
 Here we check how many peaks have been assigned to multiple genes. 
 
@@ -123,7 +123,7 @@ kable(peaks_assigned_to_genes) %>%
 ## Check how many genes have more than one peak
 
 One single gene might contain multiple peaks. This is what we are looking for as it is a sign of different 3'UTR.
-![Example from IGV of what i mean](../igv_images/img_multiple_peaks_per_gene.png)
+![Example from IGV of what i mean](/home/sz4633/polyadenylation_cerevisiae/igv_images/img_multiple_peaks_per_gene.png)
 
 ```{r}
 peaks_per_gene <- data.frame()
@@ -152,7 +152,7 @@ kable(peaks_per_gene) %>%
 ## Remove peaks whose summit is too close to the TSS
 
 Some peaks are broad enough that one of their tails is very close to the TSS of a gene. These peaks are for the following gene. However bedtools intersect assign that peak to both genes since it technically overlaps - here remove these types of peaks. 
-![Example from IGV of what i mean](../igv_images/peaks_close_to_tss.png)
+![Example from IGV of what i mean](/home/sz4633/polyadenylation_cerevisiae/igv_images/peaks_close_to_tss.png)
 
 Quantify how many of these instances we have:
 
@@ -229,9 +229,10 @@ if (!dir.exists("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/"))
 setwd("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/")
 
 for (i in 1:length(peaks)) {
-  write.csv2(peaks[[i]], 
-             file = paste0(names(peaks)[i], ".bed"), 
-             row.names = F)
+  write_delim(peaks[[i]][1:10],
+              file = paste0(names(peaks)[i], ".bed"), 
+              col_names = F,
+              delim="\t") 
 }
 ```
 

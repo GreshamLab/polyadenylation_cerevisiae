@@ -17,6 +17,7 @@ module load samtools/intel/1.14
 module load python/intel/3.8.6
 module load macs3/intel/3.0.0a5
 module load bedtools/intel/2.29.2
+module load r/gcc/4.3.1
 
 export PYTHONUNBUFFERED=TRUE
 

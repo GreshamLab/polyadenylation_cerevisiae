@@ -23,7 +23,9 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "bedtools/{sample}_intersect"), sample = FASTQ_FILE)
+        os.path.join(f"{CODE_FOLDER}", "check_peaks.html"),
+        expand(os.path.join(f"{OUTPUT_PATH}", "quantify_peaks/{sample}"), sample = FASTQ_FILE)
+
 
     threads: THREADS
 
@@ -172,6 +174,8 @@ rule bedtools_intersect:
 
     params:
         outdir = os.path.join(f"{OUTPUT_PATH}", "bedtools", "")
+    
+    threads: THREADS
 
     shell:
         """
@@ -180,4 +184,43 @@ rule bedtools_intersect:
             bedtools intersect -a {input[0]} -b {input[1]} > {output} -wa -wb
 
             cd {CODE_FOLDER}
+        """
+
+rule check_peaks:
+#this rule runs the rmd script to filter out and refine which peaks to retain for further analysis
+#it produces an Rmarkdown document in which each filtering step is described and justified
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "bedtools/")
+
+    output:
+        os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
+
+    threads: THREADS
+
+    script:
+        "check_peaks.Rmd"
+
+
+rule count_reads_in_bed_file:
+#from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "filtered_peaks/{sample}.bed"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "quantify_peaks/{sample}")
+
+    params:
+        outdir = os.path.join(f"{OUTPUT_PATH}", "quantify_peaks", "")
+
+    threads: THREADS
+
+    shell:
+        """
+            cd {params.outdir}
+
+            bedtools intersect -a {input[0]} -b {input[1]} -c > {wildcards.sample}.bed
+
+            cd {CODE_FOLDER}
+
         """
