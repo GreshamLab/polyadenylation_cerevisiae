@@ -55,6 +55,50 @@ rm(peak_files)
 
 ```
 
+Load GTF and wrangle 
+
+```{r}
+gtf <- read.table("../data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf", 
+                  header = FALSE,
+                  col.names = c("sequence", 
+                                "source", 
+                                "feature", 
+                                "start", 
+                                "end", 
+                                "score", 
+                                "strand", 
+                                "frame", 
+                                "attribute"),
+                  sep = '\t') %>% #import data
+  mutate(attribute = str_replace(attribute, ";.*", ""), #fix gene names
+         attribute = str_replace(attribute, "gene_id ", "")) %>% #fix gene names
+  filter(feature %in% c("transcript", "start_codon", "stop_codon")) %>%
+  select(-c("frame"))
+  
+#some genes have duplicated start codons that mess up the pivoting. Remove them
+duplicated <- gtf %>%
+  group_by(attribute, feature) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  filter(n > 1L)
+print(duplicated)
+
+#Pivot the gtf file
+gtf <- gtf %>% 
+  filter(! attribute %in% duplicated$attribute) %>%
+  drop_na() %>%
+  pivot_wider(names_from = c("feature"), values_from = c("start", "end"))
+
+rm(duplicated)
+
+```
+
+Merge peaks_list dataframes with the gtf file. 
+
+```{r}
+
+```
+
+
 # Calculate important statistics
 
 - Gene length
@@ -68,7 +112,7 @@ peaks <- rawdata %>%
         select(-c("chromosome_position")) %>% #remove non important cols
         mutate(gene_length = gene_end - gene_start, #calculate gene length
                peak_width = peak_end - peak_start, #calculate peak width
-               peak_summit_position = peak_start + relative_summit_position_to_peak_start, #calculate peak position on chromosome
+               peak_summit = peak_start + relative_summit_position_to_peak_start, #calculate peak position on chromosome
                peak_summit_relative_to_tss = #calculate relative peak position compared to tss
                  ifelse(strand == "+", #based on on which strand the gene is, calculating the position is different
                         peak_summit_position - tss,

@@ -216,11 +216,13 @@ rule count_reads_in_bed_file:
     threads: THREADS
 
     shell:
-        """
+        """it 
             cd {params.outdir}
 
-            bedtools intersect -a {input[0]} -b {input[1]} -c > {wildcards.sample}.bed
+            bedtools coverage -a {input[0]} -b {input[1]} -c > {wildcards.sample}.bed
 
             cd {CODE_FOLDER}
 
         """
+
+        bedtools coverage -sorted -a /scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/RAPA1.bed -b /scratch/sz4633/polyadenylation_cerevisiae/RAPA1/Sorted.bam > /scratch/sz4633/polyadenylation_cerevisiae/quantify_peaks/RAPA1.txt
