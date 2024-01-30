@@ -68,25 +68,32 @@ gtf <- read.table("../data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf
                                 "score", 
                                 "strand", 
                                 "frame", 
-                                "attribute"),
+                                "gene_name"),
                   sep = '\t') %>% #import data
-  mutate(attribute = str_replace(attribute, ";.*", ""), #fix gene names
-         attribute = str_replace(attribute, "gene_id ", "")) %>% #fix gene names
+  mutate(gene_name = str_replace(gene_name, ";.*", ""), #fix gene names
+         gene_name = str_replace(gene_name, "gene_id ", "")) %>% #fix gene names
   filter(feature %in% c("transcript", "start_codon", "stop_codon")) %>%
-  select(-c("frame"))
+  select(-c("sequence", "source", "score", "strand", "frame"))
   
 #some genes have duplicated start codons that mess up the pivoting. Remove them
 duplicated <- gtf %>%
-  group_by(attribute, feature) %>%
+  group_by(gene_name, feature) %>%
   summarise(n = n(), .groups = "drop") %>%
   filter(n > 1L)
 print(duplicated)
 
 #Pivot the gtf file
 gtf <- gtf %>% 
-  filter(! attribute %in% duplicated$attribute) %>%
+  filter(! gene_name %in% duplicated$gene_name) %>%
   drop_na() %>%
-  pivot_wider(names_from = c("feature"), values_from = c("start", "end"))
+  pivot_wider(names_from = c("feature"), values_from = c("start", "end")) %>%
+  select(-c("end_start_codon", "end_stop_codon"))
+
+colnames(gtf) <- c("gene_name", 
+                   "start_transcript",
+                   "start_codon",
+                   "stop_codon",
+                   "end_transcript")
 
 rm(duplicated)
 
@@ -95,28 +102,53 @@ rm(duplicated)
 Merge peaks_list dataframes with the gtf file. 
 
 ```{r}
+peaks <- rawdata %>% 
+  map(~.x %>%
+        select(-c("chromosome_position",
+                  "strand_macs",
+                  "gene_start",
+                  "gene_end",
+                  "tss")) %>%
+        merge(gtf,
+              by.x = "gene_name",
+              by.y = "gene_name")) #remove non important cols
 
 ```
 
-
 # Calculate important statistics
 
-- Gene length
+- Transcript length
 - Peak width: info needed to filter out peaks that are too broad
 - Peak position on chromosome
 - Peak position on gene, compared to the TSS: understand where the peak is in the gene
+- Peak to transcript start
+- Peak to transcript end
+- Peak to start codon
+- Peak to end codon
 
 ```{r}
-peaks <- rawdata %>% 
+peaks <- peaks %>% 
   map(~.x %>%
-        select(-c("chromosome_position")) %>% #remove non important cols
-        mutate(gene_length = gene_end - gene_start, #calculate gene length
+        mutate(transcript_length = end_transcript - start_transcript, #calculate gene length
                peak_width = peak_end - peak_start, #calculate peak width
-               peak_summit = peak_start + relative_summit_position_to_peak_start, #calculate peak position on chromosome
-               peak_summit_relative_to_tss = #calculate relative peak position compared to tss
+               abs_peak_summit = peak_start + relative_summit_position_to_peak_start, #calculate peak position on chromosome
+               peak_to_transcript_start = #calculate relative peak position compared to tss
                  ifelse(strand == "+", #based on on which strand the gene is, calculating the position is different
-                        peak_summit_position - tss,
-                        tss - peak_summit_position)))
+                        abs_peak_summit - start_transcript,
+                        end_transcript - abs_peak_summit),
+               peak_to_transcript_end = 
+                 ifelse(strand == "+", 
+                        end_transcript - abs_peak_summit,
+                        abs_peak_summit - end_transcript),
+               peak_to_start_codon =
+                 ifelse(strand == "+",
+                        abs_peak_summit - start_codon,
+                        start_codon - abs_peak_summit),
+               peak_to_stop_codon = 
+                 ifelse(strand == "+",
+                        stop_codon - abs_peak_summit,
+                        abs_peak_summit - stop_codon
+                        )))
 
 ```
 
@@ -133,7 +165,7 @@ peaks %>%
 
 ```
 
-## Check how many peaks are assigned to more than one gene
+## How many peaks are assigned to more than one gene
 
 Peaks can be broad and can overlap with multiple genes. When this happens, a single peak (which has a unique peak name) will be assigned to multiple genes. For example peak_1 might be assigned to gene A and gene B. 
 
@@ -190,6 +222,8 @@ kable(peaks_per_gene) %>%
     kable_styling(full_width = F, position = "left")
 
 ```
+
+##
 
 # Filter out some peaks
 
