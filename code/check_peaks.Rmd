@@ -118,9 +118,8 @@ peaks <- rawdata %>%
 # Calculate important statistics
 
 - Transcript length
-- Peak width: info needed to filter out peaks that are too broad
 - Peak position on chromosome
-- Peak position on gene, compared to the TSS: understand where the peak is in the gene
+- Peak width: info needed to filter out peaks that are too broad
 - Peak to transcript start
 - Peak to transcript end
 - Peak to start codon
@@ -130,8 +129,8 @@ peaks <- rawdata %>%
 peaks <- peaks %>% 
   map(~.x %>%
         mutate(transcript_length = end_transcript - start_transcript, #calculate gene length
-               peak_width = peak_end - peak_start, #calculate peak width
                abs_peak_summit = peak_start + relative_summit_position_to_peak_start, #calculate peak position on chromosome
+               peak_width = peak_end - peak_start, #calculate peak width
                peak_to_transcript_start = #calculate relative peak position compared to tss
                  ifelse(strand == "+", #based on on which strand the gene is, calculating the position is different
                         abs_peak_summit - start_transcript,
@@ -156,12 +155,25 @@ peaks <- peaks %>%
 
 ## Peak width distribution
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE,fig.height=10, fig.width=8}
+
 peaks %>%
   bind_rows(.id = "sample") %>% #create one df
-  ggplot(aes(x = peak_width)) + 
-  geom_histogram() +
-  xlim(0,2500)
+  select(c("gene_name",
+           "peak_width",
+           "peak_to_transcript_start",
+           "peak_to_transcript_end",
+           "peak_to_start_codon",
+           "peak_to_stop_codon")) %>%
+  pivot_longer(!gene_name, 
+               names_to = "variable",
+               values_to = "values") %>%
+  ggplot(aes(x = values)) + 
+  geom_histogram(bins = 1000) +
+  xlim(-2000,4000) +
+  facet_wrap(~variable,
+             scales = "free_y",
+             ncol = 2)
 
 ```
 
@@ -222,8 +234,6 @@ kable(peaks_per_gene) %>%
     kable_styling(full_width = F, position = "left")
 
 ```
-
-##
 
 # Filter out some peaks
 
