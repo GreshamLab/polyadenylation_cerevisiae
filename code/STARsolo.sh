@@ -1,6 +1,7 @@
 #Parameters
 GENOME_PATH = "/home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/"
 GENOME_FASTA = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa"
+GENOME_SORTED = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt"
 GENOME_GTF = "Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf"
 
 FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
@@ -205,6 +206,7 @@ rule count_reads_in_bed_file:
 #from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
     input:
         os.path.join(f"{OUTPUT_PATH}", "filtered_peaks/{sample}.bed"),
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
     output:
@@ -219,10 +221,33 @@ rule count_reads_in_bed_file:
         """it 
             cd {params.outdir}
 
-            bedtools coverage -a {input[0]} -b {input[1]} -c > {wildcards.sample}.bed
+            bedtools sort -i {input[0]} -g {input[1]}
+
+            bedtools coverage -a {input[0]} \
+                              -b {input[2]} \
+                              -c > {wildcards.sample}.bed
 
             cd {CODE_FOLDER}
 
         """
 
-        bedtools coverage -sorted -a /scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/RAPA1.bed -b /scratch/sz4633/polyadenylation_cerevisiae/RAPA1/Sorted.bam > /scratch/sz4633/polyadenylation_cerevisiae/quantify_peaks/RAPA1.txt
+#bedtools sort -i /scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/RAPA1.bed -g /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt > /scratch/sz4633/polyadenylation_cerevisiae/Rapa1.bed
+
+#bedtools coverage -sorted -g /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt -a /scratch/sz4633/polyadenylation_cerevisiae/Rapa1.bed -b /scratch/sz4633/polyadenylation_cerevisiae/RAPA1/Sorted.bam -counts > /scratch/sz4633/polyadenylation_cerevisiae/RAPA1_counts.txt
+
+#generate genome index for bedtools coverage (can use the one from Chris already, in case it does not work use the awk command)
+#samtools faidx /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa -o /scratch/sz4633/polyadenylation_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.bed
+#awk -v OFS='\t' {'print $1,$2'} /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa.fai > /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf//Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt
+
+#sort the bed file with the peaks
+#also there is something WRONG with the R bed output that needs to be fixed
+#samtools sort /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa.fai -o /scratch/sz4633/polyadenylation_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt -T /scratch/sz4633/polyadenylation_cerevisiae/
+
+
+#sort -V -k1,1 -k2,2 /scratch/sz4633/polyadenylation_cerevisiae/peaks_macs3/RAPA1_peaks.narrowPeak > /scratch/sz4633/polyadenylation_cerevisiae/RAPA1.bed
+
+
+#samtools sort {input} -o {output[0]} -T {output[1]} -@ {THREADS}
+
+
+
