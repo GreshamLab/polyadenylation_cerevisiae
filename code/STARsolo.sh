@@ -24,9 +24,10 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        os.path.join(f"{CODE_FOLDER}", "check_peaks.html"),
-        expand(os.path.join(f"{OUTPUT_PATH}", "quantify_peaks/{sample}"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_hist/{sample}"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_no_hist/{sample}"), sample = FASTQ_FILE)
 
+        #os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
 
     threads: THREADS
 
@@ -99,8 +100,7 @@ rule map_fastq_to_genome:
 
         """
 
-rule sort_bam_files:
-#samtools works faster than star for sorting
+rule sort_bam_files: #samtools works faster than star for sorting
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
@@ -118,8 +118,7 @@ rule sort_bam_files:
 
         """
 
-rule index_bam_files_for_IGV:
-#index the bam file for viewing in IGV
+rule index_bam_files_for_IGV: #index the bam file for viewing in IGV
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}", "")
 
@@ -138,8 +137,7 @@ rule index_bam_files_for_IGV:
 
         """
 
-rule find_peaks:
-#use MACS3 to find peaks - looks at all the reads present in the sample and finds where peaks are
+rule find_peaks: #looks at all the reads present in the sample and finds where peaks are
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
@@ -164,17 +162,16 @@ rule find_peaks:
 
         """
 
-rule bedtools_intersect:
-#intersect the peak location (from macs3 bed file) with the gene name in INTERSECT_FILE
+rule bedtools_intersect: #intersect the peak location (from macs3 bed file) with the gene name in INTERSECT_FILE
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "bedtools/{sample}_intersect")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_intersect")
 
     params:
-        outdir = os.path.join(f"{OUTPUT_PATH}", "bedtools", "")
+        outdir = os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect", "")
     
     threads: THREADS
 
@@ -185,6 +182,67 @@ rule bedtools_intersect:
             bedtools intersect -a {input[0]} -b {input[1]} > {output} -wa -wb
 
             cd {CODE_FOLDER}
+        """
+
+rule sort_bedtools_intersect: #sort bed file in the same way genome and bam files are
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_intersect"),
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted")
+
+    threads: THREADS
+
+    shell:
+        """
+            bedtools sort -i {input[0]} -g {input[1]} > {output}
+
+        """
+
+rule count_reads_hist: #from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
+    input:
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_hist/{sample}")
+
+    threads: THREADS
+
+    shell:
+        """
+
+            bedtools coverage -sorted \
+                              -hist \
+                              -g {input[0]} \
+                              -a {input[1]} \
+                              -b {input[2]} \
+                              > {output}
+
+        """
+
+rule count_reads_no_hist: #from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
+    input:
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_no_hist/{sample}")
+
+    threads: THREADS
+
+    shell:
+        """
+
+            bedtools coverage -sorted \
+                              -g {input[0]} \
+                              -a {input[1]} \
+                              -b {input[2]} \
+                              > {output}
+
         """
 
 rule check_peaks:
@@ -200,54 +258,5 @@ rule check_peaks:
 
     script:
         "check_peaks.Rmd"
-
-
-rule count_reads_in_bed_file:
-#from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
-    input:
-        os.path.join(f"{OUTPUT_PATH}", "filtered_peaks/{sample}.bed"),
-        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
-
-    output:
-        os.path.join(f"{OUTPUT_PATH}", "quantify_peaks/{sample}")
-
-    params:
-        outdir = os.path.join(f"{OUTPUT_PATH}", "quantify_peaks", "")
-
-    threads: THREADS
-
-    shell:
-        """it 
-            cd {params.outdir}
-
-            bedtools sort -i {input[0]} -g {input[1]}
-
-            bedtools coverage -a {input[0]} \
-                              -b {input[2]} \
-                              -c > {wildcards.sample}.bed
-
-            cd {CODE_FOLDER}
-
-        """
-
-#bedtools sort -i /scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/RAPA1.bed -g /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt > /scratch/sz4633/polyadenylation_cerevisiae/Rapa1.bed
-
-#bedtools coverage -sorted -g /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt -a /scratch/sz4633/polyadenylation_cerevisiae/Rapa1.bed -b /scratch/sz4633/polyadenylation_cerevisiae/RAPA1/Sorted.bam -counts > /scratch/sz4633/polyadenylation_cerevisiae/RAPA1_counts.txt
-
-#generate genome index for bedtools coverage (can use the one from Chris already, in case it does not work use the awk command)
-#samtools faidx /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa -o /scratch/sz4633/polyadenylation_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.bed
-#awk -v OFS='\t' {'print $1,$2'} /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa.fai > /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf//Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt
-
-#sort the bed file with the peaks
-#also there is something WRONG with the R bed output that needs to be fixed
-#samtools sort /home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa.fai -o /scratch/sz4633/polyadenylation_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt -T /scratch/sz4633/polyadenylation_cerevisiae/
-
-
-#sort -V -k1,1 -k2,2 /scratch/sz4633/polyadenylation_cerevisiae/peaks_macs3/RAPA1_peaks.narrowPeak > /scratch/sz4633/polyadenylation_cerevisiae/RAPA1.bed
-
-
-#samtools sort {input} -o {output[0]} -T {output[1]} -@ {THREADS}
-
 
 
