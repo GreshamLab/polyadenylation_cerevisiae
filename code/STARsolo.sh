@@ -24,8 +24,8 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_hist/{sample}"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_no_hist/{sample}"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}"), sample = FASTQ_FILE)
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_no_hist/{sample}"), sample = FASTQ_FILE)
 
         #os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
 
@@ -200,6 +200,32 @@ rule sort_bedtools_intersect: #sort bed file in the same way genome and bam file
 
         """
 
+rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim peaks
+    input:
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}")
+
+    threads: THREADS
+
+    shell:
+        """
+
+            bedtools coverage -sorted \
+                              -d \
+                              -g {input[0]} \
+                              -a {input[1]} \
+                              -b {input[2]} \
+                              > {output}
+
+        """
+
+#here i will need a rule for an R script to filter/trim peaks
+#after this R script, don't think I will need hist option, i think i can just do coverage - then I can use the rmd file to check peaks and extract the interesting ones
+
 rule count_reads_hist: #from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
     input:
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
@@ -245,9 +271,7 @@ rule count_reads_no_hist: #from the bed file in which I have filtered peaks, it 
 
         """
 
-rule check_peaks:
-#this rule runs the rmd script to filter out and refine which peaks to retain for further analysis
-#it produces an Rmarkdown document in which each filtering step is described and justified
+rule check_peaks: #this rule runs the rmd script to filter out and refine which peaks to retain for further analysis it produces an Rmarkdown document in which each filtering step is described and justified
     input:
         os.path.join(f"{OUTPUT_PATH}", "bedtools/")
 
