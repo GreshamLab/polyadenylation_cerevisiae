@@ -1,0 +1,67 @@
+
+```{r }
+#Load packages
+library(tidyverse)
+
+#Load data
+df_full <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae/peaks_seq_depth/RAPA_REP2_1",
+                 header = F)
+
+colnames(df_full) = c("chromosome", 
+                 "peak_start",
+                 "peak_end",
+                 "peak_name",
+                 "score",
+                 "strand_macs",
+                 "Fold_Change_at_peak_summit",
+                 "log10pvalue_at_peak_summit",
+                 "log10qvalue_at_peak_summit",
+                 "relative_summit_position_to_peak_start",
+                 "chromosome_position",
+                 "gene_start",
+                 "gene_end",
+                 "gene_name",
+                 "tss",
+                 "strand",
+                 "position",
+                 "depth")
+```
+
+Make small df to work more easily for now
+
+```{r, }
+df_full$peak_name <- as.factor(df_full$peak_name)
+some_peaks <- levels(df_full$peak_name)[100:150]
+
+df <- filter(df_full, peak_name %in% some_peaks)
+
+```
+
+
+```{r, fig.width=6, fig.height=30}
+df %>%
+  ggplot(aes(x = position,
+             y = depth)) + 
+  geom_bar(stat = "identity") +
+  facet_wrap(~ peak_name, ncol = 5)
+
+```
+
+# Find the 20% of the peaks, and then remove everything below 20%
+
+```{r}
+result <- df %>% 
+             group_by(gene_name) %>%
+             filter(depth >= (max(depth)*0.25))
+
+```
+
+```{r, fig.width=6, fig.height=30}
+result %>%
+  ggplot(aes(x = position,
+             y = depth)) + 
+  geom_bar(stat = "identity") +
+  facet_grid(gene_name ~ peak_name, scales = "free_y")
+
+```
+

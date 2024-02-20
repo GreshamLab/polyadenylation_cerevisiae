@@ -20,16 +20,59 @@ library(kableExtra)
 
 ```
 
+```{r }
+no_hist <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae/peaks_coverage_no_hist/RAPA_REP2_1", 
+                      header = F, 
+                      col.names = c("chromosome", 
+                                    "peak_start",
+                                    "peak_end",
+                                    "peak_name",
+                                    "score",
+                                    "strand_macs",
+                                    "Fold_Change_at_peak_summit",
+                                    "log10pvalue_at_peak_summit",
+                                    "log10qvalue_at_peak_summit",
+                                    "relative_summit_position_to_peak_start",
+                                    "chromosome_position",
+                                    "gene_start",
+                                    "gene_end",
+                                    "gene_name",
+                                    "tss",
+                                    "strand",
+                                    "features in B that overlapped the A interval",
+                                    "bases in A with non-zero coverage from features in B",
+                                    "length of the entry in A",
+                                    "bases in A that had non-zero coverage from features in B"))
+
+ggplot(no_hist, aes(x=features.in.B.that.overlapped.the.A.interval))+
+  geom_density()+
+  xlim(0,250000)
+
+ggplot(no_hist, aes(x=bases.in.A.with.non.zero.coverage.from.features.in.B))+
+  geom_density()
+
+ggplot(no_hist, aes(x=length.of.the.entry.in.A))+
+  geom_density()
+
+ggplot(no_hist, aes(x=Fold_Change_at_peak_summit))+
+  geom_density()
+
+ggplot(no_hist, aes(x=log10pvalue_at_peak_summit))+
+  geom_density()
+
+```
+
 # Import the data 
 
 ```{r, warning=FALSE, message=FALSE}
-setwd("/scratch/sz4633/polyadenylation_cerevisiae/bedtools/")
+setwd("/scratch/sz4633/polyadenylation_cerevisiae/peaks_coverage_no_hist/")
 
 #import peak files as list
 peak_files <- list.files(pattern = "RAPA*")
 rawdata <- lapply(peak_files, 
                      read.csv2,
                      sep = "\t",
+                     dec = ".",
                      header = F,
                      col.names = c("chromosome",
                                    "peak_start",
@@ -46,7 +89,12 @@ rawdata <- lapply(peak_files,
                                    "gene_end",
                                    "gene_name",
                                    "tss",
-                                   "strand"))
+                                   "strand",
+                                   "features in B that overlapped the A interval",
+                                   "bases in A with non-zero coverage from features in B",
+                                   "length of the entry in A",
+                                   "bases in A that had non-zero coverage from features in B"))
+
 
 #assign names to peak files in list
 peak_files <- str_remove(peak_files, "_intersect")
@@ -127,7 +175,7 @@ peaks <- rawdata %>%
 - Peak to transcript start
 - Peak to transcript end
 - Peak to start codon
-- Peak to end codon
+- Peak to stop codon
 
 ```{r}
 peaks <- peaks %>% 
@@ -179,6 +227,29 @@ peaks %>%
              ncol = 2)
 
 ```
+
+```{r, warning=FALSE,fig.height=6, fig.width=6}
+
+peaks %>%
+  bind_rows(.id = "sample") %>% #create one df
+  select(c("gene_name",
+           "Fold_Change_at_peak_summit",
+           "log10pvalue_at_peak_summit",
+           "log10qvalue_at_peak_summit"
+
+           )) %>%
+  pivot_longer(!gene_name, 
+               names_to = "variable",
+               values_to = "values") %>%
+  ggplot(aes(x = values)) + 
+  geom_histogram(bins = 1000) +
+#  xlim(-2000,4000) +
+  facet_wrap(~variable,
+             scales = "free",
+             nrow = 3)
+
+```
+
 
 ## How many peaks are assigned to more than one gene
 
@@ -326,6 +397,8 @@ peaks <- peaks %>%
         arrange(desc(sd_peak_to_end)))
 
 ```
+
+at some point report examples of genes with many peaks, like get some screenshots from IGV
 
 # Export the peaks
 

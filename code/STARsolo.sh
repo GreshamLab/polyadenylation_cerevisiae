@@ -100,7 +100,7 @@ rule map_fastq_to_genome:
 
         """
 
-rule sort_bam_files: #samtools works faster than star for sorting
+rule sort_bam_files: #samtools works faster than STAR for sorting
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
@@ -118,7 +118,7 @@ rule sort_bam_files: #samtools works faster than star for sorting
 
         """
 
-rule index_bam_files_for_IGV: #index the bam file for viewing in IGV
+rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}", "")
 
@@ -137,7 +137,7 @@ rule index_bam_files_for_IGV: #index the bam file for viewing in IGV
 
         """
 
-rule find_peaks: #looks at all the reads present in the sample and finds where peaks are
+rule find_peaks: #looks at reads in bam file and finds peaks
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
@@ -162,7 +162,7 @@ rule find_peaks: #looks at all the reads present in the sample and finds where p
 
         """
 
-rule bedtools_intersect: #intersect the peak location (from macs3 bed file) with the gene name in INTERSECT_FILE
+rule bedtools_intersect: #intersect the peak location with the gene name
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
@@ -200,7 +200,7 @@ rule sort_bedtools_intersect: #sort bed file in the same way genome and bam file
 
         """
 
-rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim peaks
+rule calculate_seq_depth: #calculate sequencing depth to trim peaks
     input:
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"),
@@ -223,7 +223,7 @@ rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim 
 
         """
 
-#here i will need a rule for an R script to filter/trim peaks
+#rule trim_peaks: #filter/trim peaks based on sequencing depth
 #after this R script, don't think I will need hist option, i think i can just do coverage - then I can use the rmd file to check peaks and extract the interesting ones
 
 rule count_reads_hist: #from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
