@@ -24,15 +24,7 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_plot.png"),sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_full.tsv"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}"), sample = FASTQ_FILE)
-        
-        #expand(os.path.join(f"{CODE_FOLDER}", "peaks_filtered/{sample}_full.tsv"), sample = FASTQ_FILE)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "output_{sample}.html"), sample = FASTQ_FILE)
-        #os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_PeakArea.tsv"),sample = FASTQ_FILE)
 
     threads: THREADS
 
@@ -168,7 +160,7 @@ rule find_peaks: #looks at reads present in the sample and finds where peaks are
 
         """
 
-rule bedtools_intersect: #intersect the peak location with the gene name
+rule intersect_gene_names: #intersect the peak location with the gene name
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
@@ -190,7 +182,7 @@ rule bedtools_intersect: #intersect the peak location with the gene name
             cd {CODE_FOLDER}
         """
 
-rule filter_peaks: #filter which peaks to retain for further analysis
+rule filter_interesting_peaks: #filter which peaks to retain for further analysis
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_intersect"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_GTF}")
@@ -208,7 +200,7 @@ rule filter_peaks: #filter which peaks to retain for further analysis
     script:
         "check_peaks.R"
 
-rule sort_bedtools_intersect: #sort bed file in the same way genome and bam files are
+rule sort_filtered_peaks: #sort bed file in the same way genome and bam files are
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
@@ -240,6 +232,7 @@ rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim 
 
             bedtools coverage -sorted \
                               -d \
+                              -split \
                               -g {input[0]} \
                               -a {input[1]} \
                               -b {input[2]} \
@@ -247,5 +240,18 @@ rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim 
 
         """
 
-#here i will need a rule for an R script to filter/trim peaks
-#after this R script, don't think I will need hist option, i think i can just do coverage - then I can use the rmd file to check peaks and extract the interesting ones
+rule trim_peaks: 
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_PeakArea.tsv"),
+    
+    params:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_area/", "")
+
+    threads: THREADS
+
+    script:
+        "trim_peaks.R"
+

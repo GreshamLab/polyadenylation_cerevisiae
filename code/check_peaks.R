@@ -1,5 +1,5 @@
 #Load packages
-library(tidyverse, verbose = F)
+library(tidyverse)
 
 #make dir where to save files
 if (!dir.exists(snakemake@params[[1]])) {
