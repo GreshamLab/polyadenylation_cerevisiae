@@ -24,10 +24,15 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_plot.png"),sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_full.tsv"), sample = FASTQ_FILE)
+        
+        #expand(os.path.join(f"{CODE_FOLDER}", "peaks_filtered/{sample}_full.tsv"), sample = FASTQ_FILE)
+        #expand(os.path.join(f"{OUTPUT_PATH}", "output_{sample}.html"), sample = FASTQ_FILE)
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"), sample = FASTQ_FILE),
         #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}"), sample = FASTQ_FILE)
         #os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
-
 
     threads: THREADS
 
@@ -120,11 +125,12 @@ rule sort_bam_files: #samtools works faster than star for sorting
 
 rule index_bam_files_for_IGV: #index the bam file for viewing in IGV
     input:
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/"),
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
     output:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai")
-
+    
     threads: THREADS
 
     shell:
@@ -137,7 +143,7 @@ rule index_bam_files_for_IGV: #index the bam file for viewing in IGV
 
         """
 
-rule find_peaks: #looks at all the reads present in the sample and finds where peaks are
+rule find_peaks: #looks at reads present in the sample and finds where peaks are
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
@@ -162,7 +168,7 @@ rule find_peaks: #looks at all the reads present in the sample and finds where p
 
         """
 
-rule bedtools_intersect: #intersect the peak location (from macs3 bed file) with the gene name in INTERSECT_FILE
+rule bedtools_intersect: #intersect the peak location with the gene name
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
@@ -184,34 +190,43 @@ rule bedtools_intersect: #intersect the peak location (from macs3 bed file) with
             cd {CODE_FOLDER}
         """
 
-rule sort_bedtools_intersect: #sort bed file in the same way genome and bam files are
+rule filter_peaks: #filter which peaks to retain for further analysis
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_intersect"),
-        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_GTF}")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_plot.png"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_full.tsv")
+    
+    params:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/", "")
 
-    threads: THREADS
-
-    shell:
-        """
-            bedtools sort -i {input[0]} -g {input[1]} > {output}
-
-        """
-
-# rules from here down will not run for now
-rule check_peaks: #this rule runs the rmd script to filter out and refine which peaks to retain for further analysis it produces an Rmarkdown document in which each filtering step is described and justified
-    input:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted")
-
-    output:
-        os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
 
     threads: THREADS
 
     script:
-        "check_peaks.Rmd"
+        "check_peaks.R"
+
+    #script:
+    #    "check_peaks.Rmd"
+
+#rule sort_bedtools_intersect: #sort bed file in the same way genome and bam files are
+#    input:
+#        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_intersect"),
+#        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
+#
+#    output:
+#        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted")
+#
+#    threads: THREADS
+#
+#    shell:
+#        """
+#            bedtools sort -i {input[0]} -g {input[1]} > {output}
+#
+#        """
 
 rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim peaks
     input:
