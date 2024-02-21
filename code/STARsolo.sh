@@ -26,12 +26,12 @@ rule all:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_plot.png"),sample = FASTQ_FILE),
         expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_full.tsv"), sample = FASTQ_FILE)
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_full.tsv"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"), sample = FASTQ_FILE),
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}"), sample = FASTQ_FILE)
         
         #expand(os.path.join(f"{CODE_FOLDER}", "peaks_filtered/{sample}_full.tsv"), sample = FASTQ_FILE)
         #expand(os.path.join(f"{OUTPUT_PATH}", "output_{sample}.html"), sample = FASTQ_FILE)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"), sample = FASTQ_FILE),
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}"), sample = FASTQ_FILE)
         #os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
 
     threads: THREADS
@@ -203,30 +203,26 @@ rule filter_peaks: #filter which peaks to retain for further analysis
     params:
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/", "")
 
-
     threads: THREADS
 
     script:
         "check_peaks.R"
 
-    #script:
-    #    "check_peaks.Rmd"
+rule sort_bedtools_intersect: #sort bed file in the same way genome and bam files are
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"),
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
 
-#rule sort_bedtools_intersect: #sort bed file in the same way genome and bam files are
-#    input:
-#        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_intersect"),
-#        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
-#
-#    output:
-#        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted")
-#
-#    threads: THREADS
-#
-#    shell:
-#        """
-#            bedtools sort -i {input[0]} -g {input[1]} > {output}
-#
-#        """
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted")
+
+    threads: THREADS
+
+    shell:
+        """
+            bedtools sort -i {input[0]} -g {input[1]} > {output}
+
+        """
 
 rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim peaks
     input:
