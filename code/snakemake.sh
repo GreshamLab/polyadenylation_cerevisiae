@@ -4,12 +4,12 @@
 #SBATCH	--job-name=STARsolo
 #SBATCH --mail-type=END
 #SBATCH	--mail-user=sz4633@nyu.edu
-#SBATCH	--output=snake_out/.%j.out
+#SBATCH	--output=snake_out/%j.out
 #SBATCH	--error=snake_out/%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=16
 #SBATCH --mem=160000
-#SBATCH --time 23:59:59
+#SBATCH --time 23:59:00
 
 module purge
 module load snakemake/6.12.3

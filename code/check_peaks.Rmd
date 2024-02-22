@@ -1,9 +1,8 @@
 ---
 title: "Check peaks"
-author: "Simone Zaghen"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document: 
+    self_contained: yes
     toc: true
     number_section: true
     toc_float: 
@@ -20,57 +19,12 @@ library(kableExtra)
 
 ```
 
-```{r }
-no_hist <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae/peaks_coverage_no_hist/RAPA_REP2_1", 
-                      header = F, 
-                      col.names = c("chromosome", 
-                                    "peak_start",
-                                    "peak_end",
-                                    "peak_name",
-                                    "score",
-                                    "strand_macs",
-                                    "Fold_Change_at_peak_summit",
-                                    "log10pvalue_at_peak_summit",
-                                    "log10qvalue_at_peak_summit",
-                                    "relative_summit_position_to_peak_start",
-                                    "chromosome_position",
-                                    "gene_start",
-                                    "gene_end",
-                                    "gene_name",
-                                    "tss",
-                                    "strand",
-                                    "features in B that overlapped the A interval",
-                                    "bases in A with non-zero coverage from features in B",
-                                    "length of the entry in A",
-                                    "bases in A that had non-zero coverage from features in B"))
-
-ggplot(no_hist, aes(x=features.in.B.that.overlapped.the.A.interval))+
-  geom_density()+
-  xlim(0,250000)
-
-ggplot(no_hist, aes(x=bases.in.A.with.non.zero.coverage.from.features.in.B))+
-  geom_density()
-
-ggplot(no_hist, aes(x=length.of.the.entry.in.A))+
-  geom_density()
-
-ggplot(no_hist, aes(x=Fold_Change_at_peak_summit))+
-  geom_density()
-
-ggplot(no_hist, aes(x=log10pvalue_at_peak_summit))+
-  geom_density()
-
-```
-
 # Import the data 
 
 ```{r, warning=FALSE, message=FALSE}
-setwd("/scratch/sz4633/polyadenylation_cerevisiae/peaks_coverage_no_hist/")
+#import peak file
 
-#import peak files as list
-peak_files <- list.files(pattern = "RAPA*")
-rawdata <- lapply(peak_files, 
-                     read.csv2,
+rawdata <- read.csv2("/scratch/sz4633/polyadenylation_cerevisiae2/peaks_bedtools_intersect/RAPA1_intersect",
                      sep = "\t",
                      dec = ".",
                      header = F,
@@ -89,17 +43,10 @@ rawdata <- lapply(peak_files,
                                    "gene_end",
                                    "gene_name",
                                    "tss",
-                                   "strand",
-                                   "features in B that overlapped the A interval",
-                                   "bases in A with non-zero coverage from features in B",
-                                   "length of the entry in A",
-                                   "bases in A that had non-zero coverage from features in B"))
+                                   "strand"
+                                   )
+                     )
 
-
-#assign names to peak files in list
-peak_files <- str_remove(peak_files, "_intersect")
-names(rawdata) <- peak_files
-rm(peak_files)
 
 ```
 
@@ -155,7 +102,6 @@ Merge peaks_list dataframes with the gtf file.
 
 ```{r}
 peaks <- rawdata %>% 
-  map(~.x %>%
         select(-c("chromosome_position",
                   "strand_macs",
                   "gene_start",
@@ -163,7 +109,7 @@ peaks <- rawdata %>%
                   "tss")) %>%
         merge(gtf,
               by.x = "gene_name",
-              by.y = "gene_name")) #remove non important cols
+              by.y = "gene_name") #remove non important cols
 
 ```
 
@@ -179,7 +125,6 @@ peaks <- rawdata %>%
 
 ```{r}
 peaks <- peaks %>% 
-  map(~.x %>%
         mutate(transcript_length = end_transcript - start_transcript,
                abs_peak_summit = peak_start + relative_summit_position_to_peak_start,
                peak_width = peak_end - peak_start, 
@@ -198,7 +143,7 @@ peaks <- peaks %>%
                peak_to_stop_codon = 
                  ifelse(strand == "+",
                         stop_codon - abs_peak_summit,
-                        abs_peak_summit - stop_codon)))
+                        abs_peak_summit - stop_codon))
 
 ```
 
@@ -209,7 +154,6 @@ peaks <- peaks %>%
 ```{r, warning=FALSE,fig.height=10, fig.width=8}
 
 peaks %>%
-  bind_rows(.id = "sample") %>% #create one df
   select(c("gene_name",
            "peak_width",
            "peak_to_transcript_start",
@@ -220,36 +164,13 @@ peaks %>%
                names_to = "variable",
                values_to = "values") %>%
   ggplot(aes(x = values)) + 
-  geom_histogram(bins = 1000) +
+  geom_histogram(bins = 500) +
   xlim(-2000,4000) +
   facet_wrap(~variable,
              scales = "free_y",
              ncol = 2)
 
 ```
-
-```{r, warning=FALSE,fig.height=6, fig.width=6}
-
-peaks %>%
-  bind_rows(.id = "sample") %>% #create one df
-  select(c("gene_name",
-           "Fold_Change_at_peak_summit",
-           "log10pvalue_at_peak_summit",
-           "log10qvalue_at_peak_summit"
-
-           )) %>%
-  pivot_longer(!gene_name, 
-               names_to = "variable",
-               values_to = "values") %>%
-  ggplot(aes(x = values)) + 
-  geom_histogram(bins = 1000) +
-#  xlim(-2000,4000) +
-  facet_wrap(~variable,
-             scales = "free",
-             nrow = 3)
-
-```
-
 
 ## How many peaks are assigned to more than one gene
 
@@ -260,27 +181,14 @@ Peaks can be broad and can overlap with multiple genes. When this happens, a sin
 Here we check how many peaks have been assigned to multiple genes. 
 
 ```{r }
-peaks_assigned_to_genes <- data.frame()
-
-for (i in 1:length(peaks)) {
-  tmp <- as.data.frame(table(peaks[[i]]$peak_name))
+  tmp <- as.data.frame(table(peaks$peak_name))
   tmp <- as.data.frame(table(tmp$Freq))
-  tmp <- cbind(tmp, names(peaks[i]))
-  peaks_assigned_to_genes <- rbind(peaks_assigned_to_genes, tmp)
-}
+  colnames(tmp) <- c("genes_assigned_to_peak", 
+                     "number_of_peaks")
 
-colnames(peaks_assigned_to_genes) <- c("genes_assigned_to_peak", 
-                                       "number_of_peaks", 
-                                       "sample")
-
-peaks_assigned_to_genes <-peaks_assigned_to_genes %>%
-  group_by(genes_assigned_to_peak) %>%
-  summarise(number_of_peaks = sum(number_of_peaks))
-
-kable(peaks_assigned_to_genes) %>%
-  kable_styling(full_width = F, position = "left")
-
-rm(peaks_assigned_to_genes, tmp, i)
+kable(tmp) %>%
+  kable_styling(full_width = F, 
+                position = "left")
 
 ```
 
@@ -290,26 +198,15 @@ One single gene might contain multiple peaks. This is what we are looking for as
 ![Example from IGV of what i mean](/home/sz4633/polyadenylation_cerevisiae/igv_images/img_multiple_peaks_per_gene.png)
 
 ```{r}
-peaks_per_gene <- data.frame()
-
-for (i in 1:length(peaks)) {
-  tmp <- as.data.frame(table(peaks[[i]]$gene_name))
+  tmp <- as.data.frame(table(peaks$gene_name))
   tmp <- as.data.frame(table(tmp$Freq))
-  tmp <- cbind(tmp, names(peaks[i]))
-  peaks_per_gene <- rbind(peaks_per_gene, tmp)
-}
 
-colnames(peaks_per_gene) <- c("peaks_per_gene", "frequency", "sample")
+colnames(tmp) <- c("peaks_per_gene", 
+                   "frequency")
 
-peaks_per_gene <- peaks_per_gene %>%
-        group_by(peaks_per_gene) %>%
-        mutate(peaks_per_gene = as.numeric(peaks_per_gene)) %>%
-        summarise(frequency = sum(frequency))
-
-kable(peaks_per_gene) %>%
-    kable_styling(full_width = F, position = "left")
-
-rm(peaks_per_gene, tmp, i)
+kable(tmp) %>%
+    kable_styling(full_width = F, 
+                  position = "left")
 
 ```
 
@@ -323,10 +220,11 @@ Some peaks are broad enough that one of their tails is very close to the TSS of 
 Quantify how many of these instances we have:
 
 ```{r}
-kable(sapply(peaks %>% 
-               map(~.x %>%
-                     filter(peak_to_transcript_start < 50)),
-             nrow)) %>%
+kable(
+  nrow(peaks %>% 
+       filter(peak_to_transcript_start < 50)
+       )
+  ) %>%
   kable_styling(full_width = F, position = "left")
 
 ```
@@ -335,8 +233,7 @@ Remove them
 
 ```{r}
 peaks <- peaks %>% 
-  map(~.x %>%
-        filter(peak_to_transcript_start > 50))
+  filter(peak_to_transcript_start > 50)
 
 ```
 
@@ -347,22 +244,22 @@ Peaks that have a width above the transcript length will be filtered out since t
 Quantify how many of these instances we have:
 
 ```{r}
-tmp1 <- as.data.frame(sapply(peaks %>% 
-                 map(~.x %>%
-                       filter(peak_width > 500)),
-             nrow))
+tmp1 <- as.data.frame(nrow(peaks %>% 
+                             filter(peak_width > 500)
+                           )
+                      )
+tmp2 <- as.data.frame(nrow(peaks %>% 
+                             filter(peak_width > transcript_length)
+                           )
+                      )
 
-tmp2 <- as.data.frame(sapply(peaks %>% 
-                 map(~.x %>%
-                       filter(peak_width > transcript_length)),
-             nrow))
-tmp <- cbind(tmp1,tmp2) %>% rownames_to_column()
-colnames(tmp) <- c("Sample", "Cutoff_500", "Cutoff_Transcript_Length")
+tmp <- cbind(tmp1,tmp2)
+colnames(tmp) <- c("Cutoff_500", "Cutoff_Transcript_Length")
 
 kable(tmp) %>%
   kable_styling(full_width = F, position = "left")
 
-rm(tmp, tmp1, tmp2)
+rm(list=ls(pattern="^tmp"))
 
 ```
 
@@ -370,8 +267,7 @@ Remove them
 
 ```{r }
 peaks <- peaks %>% 
-  map(~.x %>%
-        filter(peak_width < transcript_length))
+  filter(peak_width < 500)
 
 ```
 
@@ -381,40 +277,6 @@ Now that we filtered out most of the unwanted peaks, let's find the genes with m
 
 ```{r}
 peaks <- peaks %>% 
-  map(~.x %>%
-        group_by(gene_name) %>% 
-        filter(n()>1))
-
-```
-
-# Fish out most interesting genes
-
-```{r}
-peaks <- peaks %>% 
-  map(~.x %>%
-        group_by(gene_name) %>% 
-        mutate(sd_peak_to_end = sd(peak_to_transcript_end))%>%
-        arrange(desc(sd_peak_to_end)))
-
-```
-
-at some point report examples of genes with many peaks, like get some screenshots from IGV
-
-# Export the peaks
-
-```{r}
-if (!dir.exists("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/"))
-  {dir.create("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/")}
-
-wd = ("/scratch/sz4633/polyadenylation_cerevisiae/filtered_peaks/")
-
-saveRDS(peaks, file = paste0(wd,"my_data.rds"))
-
-for (i in 1:length(peaks)) {
-  write_delim(peaks[[i]][2:5],
-              file = paste0(wd, names(peaks)[i], ".bed"), 
-              col_names = F,
-              delim="\t") 
-}
-
+  group_by(gene_name) %>% 
+  filter(n()>1)
 ```

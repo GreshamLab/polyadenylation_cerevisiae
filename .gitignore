@@ -1,9 +1,9 @@
 /data
 /results
 /code/.snakemake
+/code/snake_out
 /code/star_executable/STAR
 /code/snake.*
-code/genome_indexLog.out
+/code/genome_indexLog.out
 /igv_images
-code/check_peaks.html
-code/snake_out/
+/code/check_peaks.html

@@ -5,18 +5,18 @@ GENOME_SORTED = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt"
 GENOME_GTF = "Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf"
 
 FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
-FASTQ_FILE = ["RAPA1", "RAPA2", "RAPA3", "RAPA4", 
-              "RAPA5", "RAPA6", "RAPA7", "RAPA8",
-              "RAPA_REP2_1", "RAPA_REP2_2", "RAPA_REP2_3", "RAPA_REP2_4",
-              "RAPA_REP2_5", "RAPA_REP2_6", "RAPA_REP2_7", "RAPA_REP2_8"
-            ]
+FASTQ_FILE = ["RAPA1"] #, "RAPA2", "RAPA3", "RAPA4", 
+              #"RAPA5", "RAPA6", "RAPA7", "RAPA8",
+              #"RAPA_REP2_1", "RAPA_REP2_2", "RAPA_REP2_3", "RAPA_REP2_4",
+              #"RAPA_REP2_5", "RAPA_REP2_6", "RAPA_REP2_7", "RAPA_REP2_8"
+            #]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
 INTERSECT_FILE = "/home/sz4633/polyadenylation_cerevisiae/data/Saccharomyces_cerevisiae.R64-1-1.CLEAN.bed"
 THREADS = 16
 
-OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae/"
-TMP_DIR = "/scratch/sz4633/polyadenylation_cerevisiae/tmp/"
+OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae2/"
+TMP_DIR = "/scratch/sz4633/polyadenylation_cerevisiae2/tmp/"
 STAR_PATH = "/home/sz4633/polyadenylation_cerevisiae/code/star_executable"
 CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 
@@ -24,10 +24,7 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai"), sample = FASTQ_FILE),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}"), sample = FASTQ_FILE)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_no_hist/{sample}"), sample = FASTQ_FILE)
-
-        #os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_PeakArea.tsv"),sample = FASTQ_FILE)
 
     threads: THREADS
 
@@ -120,11 +117,12 @@ rule sort_bam_files: #samtools works faster than STAR for sorting
 
 rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
     input:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}", "")
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
     output:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam.bai")
-
+    
     threads: THREADS
 
     shell:
@@ -136,6 +134,7 @@ rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
             cd {CODE_FOLDER}
 
         """
+
 
 rule find_peaks: #looks at reads in bam file and finds peaks
     input:
@@ -162,7 +161,7 @@ rule find_peaks: #looks at reads in bam file and finds peaks
 
         """
 
-rule bedtools_intersect: #intersect the peak location with the gene name
+rule bedtools_intersect: #intersect peak location with the gene name
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
@@ -184,9 +183,27 @@ rule bedtools_intersect: #intersect the peak location with the gene name
             cd {CODE_FOLDER}
         """
 
-rule sort_bedtools_intersect: #sort bed file in the same way genome and bam files are
+rule filter_interesting_peaks: #filter which peaks to retain for further analysis
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_intersect"),
+        os.path.join(f"{GENOME_PATH}", f"{GENOME_GTF}")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_plot.png"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_full.tsv")
+    
+    params:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/", "")
+
+    threads: THREADS
+
+    script:
+        "check_peaks.R"
+
+rule sort_filtered_peaks: #sort bed file in the same way genome and bam files are
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}.tsv"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
 
     output:
@@ -200,7 +217,7 @@ rule sort_bedtools_intersect: #sort bed file in the same way genome and bam file
 
         """
 
-rule calculate_seq_depth: #calculate sequencing depth to trim peaks
+rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim peaks
     input:
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"),
@@ -216,6 +233,7 @@ rule calculate_seq_depth: #calculate sequencing depth to trim peaks
 
             bedtools coverage -sorted \
                               -d \
+                              -split \
                               -g {input[0]} \
                               -a {input[1]} \
                               -b {input[2]} \
@@ -223,64 +241,18 @@ rule calculate_seq_depth: #calculate sequencing depth to trim peaks
 
         """
 
-#rule trim_peaks: #filter/trim peaks based on sequencing depth
-#after this R script, don't think I will need hist option, i think i can just do coverage - then I can use the rmd file to check peaks and extract the interesting ones
-
-rule count_reads_hist: #from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
+rule trim_peaks: 
     input:
-        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"),
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_hist/{sample}")
-
-    threads: THREADS
-
-    shell:
-        """
-
-            bedtools coverage -sorted \
-                              -hist \
-                              -g {input[0]} \
-                              -a {input[1]} \
-                              -b {input[2]} \
-                              > {output}
-
-        """
-
-rule count_reads_no_hist: #from the bed file in which I have filtered peaks, it counts the reads in the bam alignemnt file
-    input:
-        os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_sorted"),
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
-
-    output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_coverage_no_hist/{sample}")
-
-    threads: THREADS
-
-    shell:
-        """
-
-            bedtools coverage -sorted \
-                              -g {input[0]} \
-                              -a {input[1]} \
-                              -b {input[2]} \
-                              > {output}
-
-        """
-
-rule check_peaks: #this rule runs the rmd script to filter out and refine which peaks to retain for further analysis it produces an Rmarkdown document in which each filtering step is described and justified
-    input:
-        os.path.join(f"{OUTPUT_PATH}", "bedtools/")
-
-    output:
-        os.path.join(f"{CODE_FOLDER}", "check_peaks.html")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_PeakArea.tsv"),
+    
+    params:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_area/", "")
 
     threads: THREADS
 
     script:
-        "check_peaks.Rmd"
-
+        "trim_peaks.R"
 
