@@ -26,6 +26,7 @@ library(kableExtra)
 
 rawdata <- read.csv2("/scratch/sz4633/polyadenylation_cerevisiae2/peaks_bedtools_intersect/RAPA1_intersect",
                      sep = "\t",
+                     dec = ".",
                      header = F,
                      col.names = c("chromosome",
                                    "peak_start",
@@ -45,6 +46,7 @@ rawdata <- read.csv2("/scratch/sz4633/polyadenylation_cerevisiae2/peaks_bedtools
                                    "strand"
                                    )
                      )
+
 
 ```
 
@@ -119,7 +121,7 @@ peaks <- rawdata %>%
 - Peak to transcript start
 - Peak to transcript end
 - Peak to start codon
-- Peak to end codon
+- Peak to stop codon
 
 ```{r}
 peaks <- peaks %>% 
@@ -277,5 +279,4 @@ Now that we filtered out most of the unwanted peaks, let's find the genes with m
 peaks <- peaks %>% 
   group_by(gene_name) %>% 
   filter(n()>1)
-
 ```

@@ -97,7 +97,7 @@ rule map_fastq_to_genome:
 
         """
 
-rule sort_bam_files: #samtools works faster than star for sorting
+rule sort_bam_files: #samtools works faster than STAR for sorting
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
@@ -115,7 +115,7 @@ rule sort_bam_files: #samtools works faster than star for sorting
 
         """
 
-rule index_bam_files_for_IGV: #index the bam file for viewing in IGV
+rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/"),
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
@@ -135,7 +135,8 @@ rule index_bam_files_for_IGV: #index the bam file for viewing in IGV
 
         """
 
-rule find_peaks: #looks at reads present in the sample and finds where peaks are
+
+rule find_peaks: #looks at reads in bam file and finds peaks
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted.bam")
 
@@ -160,7 +161,7 @@ rule find_peaks: #looks at reads present in the sample and finds where peaks are
 
         """
 
-rule intersect_gene_names: #intersect the peak location with the gene name
+rule bedtools_intersect: #intersect peak location with the gene name
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
