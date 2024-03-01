@@ -21,10 +21,14 @@ colnames(rawdata) = c("chromosome",
 df <- rawdata %>%
   mutate(peak_name = as.factor(peak_name)) %>%
   group_by(gene_name) %>%
-  filter(depth >= (max(depth)*0.25)) %>%
+  filter(depth >= (max(depth)*0.25)) %>% #remove low coverage
   ungroup() %>%
   group_by(chromosome, peak_start, peak_end, peak_name, gene_name) %>%
-  summarise(peak_area = sum(depth))
+  summarise(peak_area = sum(depth)) %>% #calculate peak area
+  ungroup() %>%
+  group_by(gene_name) %>% 
+  filter(n() > 1) #remove genes with 1 peak only
+  
 
 write_delim(df,
             snakemake@output[[1]], 

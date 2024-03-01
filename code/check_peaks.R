@@ -213,7 +213,7 @@ tmp
 
   #Remove them 
   peaks <- peaks %>% 
-    filter(peak_width < 500)
+    filter(peak_width < transcript_length)
 
   #Remove genes with only one peak
   #Now that we filtered out most of the unwanted peaks, 
@@ -233,5 +233,5 @@ tmp
   #export full df
   write_delim(peaks,
               snakemake@output[[3]], 
-              col_names = F,
+              col_names = T,
               delim="\t") 
