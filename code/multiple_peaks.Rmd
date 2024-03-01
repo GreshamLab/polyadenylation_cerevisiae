@@ -1,0 +1,72 @@
+---
+title: "Multiple Peaks"
+author: "Simone Zaghen"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document: 
+    toc: true
+    number_section: true
+    toc_float: 
+      collapsed: false
+      smooth_scroll: true
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "../results/") })
+
+---
+
+# Load packages
+
+```{r, message=FALSE}
+library(tidyverse)
+
+```
+
+# Load data and merge metadata
+
+```{r}
+rawdata <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae2/peaks_area/RAPA1_PeakArea.tsv")
+
+metadata <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae2/peaks_filtered/RAPA1_full.tsv")
+
+df <- merge(rawdata, metadata, by = c("chromosome",
+                                     "peak_start",
+                                     "peak_end",
+                                     "peak_name",
+                                     "gene_name"))
+
+```
+
+Check how many peaks are assigned to genes
+
+```{r}
+tmp <- as.data.frame(table(df$gene_name))
+tmp <- as.data.frame(table(tmp$Freq))
+colnames(tmp) <- c("# of peaks", "Freq")
+tmp  
+
+```
+
+Calculate the sd of the genes, to see which ones are the most similar/different.
+
+```{r}
+df <- df %>% 
+  group_by(gene_name) %>%
+  mutate(st_dev = sd(peak_area),
+         freq = n()) %>% #calculate difference between peak areas
+  ungroup()
+
+```
+
+Then extract top 100 genes for area, and sort by their sd. get the ones with lower sd. check them on IGV 
+
+```{r}
+interesting_genes <- unique(df %>%
+                              arrange(desc(peak_area)) %>%
+                              pull(gene_name))[1:50]
+
+interesting_genes <- df %>%
+  filter(gene_name %in% interesting_genes) %>%
+  arrange(st_dev)
+
+```
+
