@@ -114,7 +114,7 @@ rule split_strands: #split reads that align to positive and negative strand
     
     shell:
         """
-        if ["{STRAND}" = "negative"]; then
+        if [ "{STRAND}" = "negative" ]; then
             samtools view -f 16 -o {output} {input}
         else
             samtools view -F 16 -o {output} {input}
@@ -177,7 +177,7 @@ rule find_peaks: #looks at reads in bam file and finds peaks
     shell:
         """
             macs3 callpeak -t {input} \
-                --name {wildcards.sample} \
+                --name {wildcards.sample}_{wildcards.STRAND} \
                 --gsize 1.2e7 `#mappable genome size, defined as the genome size which can be sequenced.` \
                 --nomodel `#turn off model construction`\
                 --shift -75 `#extend reads from 5’ to 3’ `\
