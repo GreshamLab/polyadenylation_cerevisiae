@@ -15,8 +15,8 @@ WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
 INTERSECT_FILE = "/home/sz4633/polyadenylation_cerevisiae/data/Saccharomyces_cerevisiae.R64-1-1.CLEAN.bed"
 THREADS = 16
 
-OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae/"
-TMP_DIR = "/scratch/sz4633/polyadenylation_cerevisiae/tmp/"
+OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae_small_s/"
+TMP_DIR = "/scratch/sz4633/polyadenylation_cerevisiae_small_s/tmp/"
 STAR_PATH = "/home/sz4633/polyadenylation_cerevisiae/code/star_executable"
 CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 
@@ -233,6 +233,7 @@ rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim 
 
             bedtools coverage -sorted \
                               -d \
+                              -s \
                               -split \
                               -g {input[0]} \
                               -a {input[1]} \

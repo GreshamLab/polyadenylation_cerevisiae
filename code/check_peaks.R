@@ -220,12 +220,13 @@ tmp
   #let's find the genes with more than one peak! 
   peaks <- peaks %>% 
     group_by(gene_name) %>% 
-    filter(n()>1)
+    filter(n()>1) %>%
+    relocate(strand, .after = gene_name)
 
 
 #Save output
   #export bed with minumum amount of cols
-  write_delim(peaks[1:5],
+  write_delim(peaks[1:6],
               snakemake@output[[2]], 
               col_names = F,
               delim="\t") 

@@ -15,6 +15,7 @@ colnames(rawdata) = c("chromosome",
                       "peak_end",
                       "peak_name",
                       "gene_name",
+                      "strand",
                       "position",
                       "depth")
 
