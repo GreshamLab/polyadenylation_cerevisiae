@@ -10,7 +10,7 @@ FASTQ_FILE = ["RAPA1" , "RAPA2"] #, "RAPA3", "RAPA4",
               #"RAPA_REP2_1", "RAPA_REP2_2", "RAPA_REP2_3", "RAPA_REP2_4",
               #"RAPA_REP2_5", "RAPA_REP2_6", "RAPA_REP2_7", "RAPA_REP2_8"
             #]
-STRAND = ["positive", "negative"]
+orientation = ["positive" , "negative"]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
 INTERSECT_FILE = "/home/sz4633/polyadenylation_cerevisiae/data/Saccharomyces_cerevisiae.R64-1-1.CLEAN.bed"
@@ -24,13 +24,13 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 #Workflow
 rule all:
     input:
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{STRAND}.bam.bai"), sample = FASTQ_FILE, STRAND = STRAND),
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{STRAND}_peaks.narrowPeak"), sample = FASTQ_FILE, STRAND = STRAND)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{STRAND}_intersect"), sample = FASTQ_FILE, STRAND = STRAND)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{STRAND}.tsv"), sample = FASTQ_FILE, STRAND = STRAND)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{STRAND}_sorted"), sample = FASTQ_FILE, STRAND = STRAND)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{STRAND}"), sample = FASTQ_FILE, STRAND = STRAND)
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{STRAND}_PeakArea.tsv"), sample = FASTQ_FILE, STRAND = STRAND)
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai"), sample = FASTQ_FILE, strand = orientation),
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_peaks.narrowPeak"), sample = FASTQ_FILE, strand = strand)
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{strand}_intersect"), sample = FASTQ_FILE, strand = strand)
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}.tsv"), sample = FASTQ_FILE, strand = strand)
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{strand}_sorted"), sample = FASTQ_FILE, strand = strand)
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{strand}"), sample = FASTQ_FILE, strand = strand)
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv"), sample = FASTQ_FILE, strand = orientation)
 
     threads: THREADS
 
@@ -108,13 +108,16 @@ rule split_strands: #split reads that align to positive and negative strand
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned_{STRAND}.out.bam"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned_{strand}.out.bam"),
 
     threads: THREADS
     
     shell:
         """
-        if [ "{STRAND}" = "negative" ]; then
+        echo "value: {wildcards.strand}"
+
+        if [ "{wildcards.strand}" = "negative" ]
+        then
             samtools view -f 16 -o {output} {input}
         else
             samtools view -F 16 -o {output} {input}
@@ -124,11 +127,11 @@ rule split_strands: #split reads that align to positive and negative strand
 
 rule sort_bam_files: #samtools works faster than STAR for sorting
     input:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned_{STRAND}.out.bam")
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned_{strand}.out.bam")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{STRAND}.bam"),
-        temporary(directory(os.path.join(f"{TMP_DIR}", "{sample}_{STRAND}")))
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam"),
+        temporary(directory(os.path.join(f"{TMP_DIR}", "{sample}_{strand}")))
 
     threads: THREADS
 
@@ -142,10 +145,10 @@ rule sort_bam_files: #samtools works faster than STAR for sorting
 
 rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
     input:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{STRAND}.bam")
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{STRAND}.bam.bai")
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai")
     
     threads: THREADS
 
@@ -164,10 +167,10 @@ rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
 
 rule find_peaks: #looks at reads in bam file and finds peaks
     input:
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{STRAND}.bam"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam"),
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{STRAND}_peaks.narrowPeak")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_peaks.narrowPeak")
     
     params:
         outdir = os.path.join(f"{OUTPUT_PATH}", "peaks_macs3", "")
@@ -177,7 +180,7 @@ rule find_peaks: #looks at reads in bam file and finds peaks
     shell:
         """
             macs3 callpeak -t {input} \
-                --name {wildcards.sample}_{wildcards.STRAND} \
+                --name {wildcards.sample}_{wildcards.strand} \
                 --gsize 1.2e7 `#mappable genome size, defined as the genome size which can be sequenced.` \
                 --nomodel `#turn off model construction`\
                 --shift -75 `#extend reads from 5’ to 3’ `\
@@ -189,11 +192,11 @@ rule find_peaks: #looks at reads in bam file and finds peaks
 
 rule bedtools_intersect: #intersect peak location with the gene name
     input:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{STRAND}_peaks.narrowPeak"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{STRAND}_intersect")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{strand}_intersect")
 
     params:
         outdir = os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect", "")
@@ -211,13 +214,13 @@ rule bedtools_intersect: #intersect peak location with the gene name
 
 rule filter_interesting_peaks: #filter which peaks to retain for further analysis
     input:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{STRAND}_intersect"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{strand}_intersect"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_GTF}")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{STRAND}_plot.png"),
-        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{STRAND}.tsv"),
-        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{STRAND}_full.tsv")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}_plot.png"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}.tsv"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}_full.tsv")
     
     params:
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/", "")
@@ -229,11 +232,11 @@ rule filter_interesting_peaks: #filter which peaks to retain for further analysi
 
 rule sort_filtered_peaks: #sort bed file in the same way genome and bam files are
     input:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{STRAND}.tsv"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}.tsv"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{STRAND}_sorted")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{strand}_sorted")
 
     threads: THREADS
 
@@ -246,11 +249,11 @@ rule sort_filtered_peaks: #sort bed file in the same way genome and bam files ar
 rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim peaks
     input:
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
-        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{STRAND}_sorted"),
-        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{STRAND}.bam")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{strand}_sorted"),
+        os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{STRAND}")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{strand}")
 
     threads: THREADS
 
@@ -269,10 +272,10 @@ rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim 
 
 rule trim_peaks: 
     input:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{STRAND}")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{strand}")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{STRAND}_PeakArea.tsv")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv")
     
     params:
         os.path.join(f"{OUTPUT_PATH}", "peaks_area/", "")
