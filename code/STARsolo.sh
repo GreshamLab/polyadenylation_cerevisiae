@@ -114,8 +114,6 @@ rule split_strands: #split reads that align to positive and negative strand
     
     shell:
         """
-        echo "value: {wildcards.strand}"
-
         if [ "{wildcards.strand}" = "negative" ]
         then
             samtools view -f 16 -o {output} {input}
