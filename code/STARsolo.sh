@@ -5,7 +5,7 @@ GENOME_SORTED = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt"
 GENOME_GTF = "Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf"
 
 FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
-FASTQ_FILE = ["RAPA1" , "RAPA2"] #, "RAPA3", "RAPA4", 
+FASTQ_FILE = ["RAPA1" ] #, "RAPA2"] #, "RAPA3", "RAPA4", 
               #"RAPA5", "RAPA6", "RAPA7", "RAPA8",
               #"RAPA_REP2_1", "RAPA_REP2_2", "RAPA_REP2_3", "RAPA_REP2_4",
               #"RAPA_REP2_5", "RAPA_REP2_6", "RAPA_REP2_7", "RAPA_REP2_8"
@@ -24,9 +24,8 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 #Workflow
 rule all:
     input:
-        directory(os.path.join(f"{OUTPUT_PATH}", f"star_index"))
-        #expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai"), sample = FASTQ_FILE, strand = orientation),
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv"), sample = FASTQ_FILE, strand = orientation)
+        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai"), sample = FASTQ_FILE, strand = orientation),
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv"), sample = FASTQ_FILE, strand = orientation)
 
     threads: THREADS
 
@@ -101,7 +100,7 @@ rule map_fastq_to_genome:
 
         """
 
-rule split_strands: #split reads that align to positive and negative strand
+rule split_strands: #split reads that align to positive and negative strand (MACS3 does not distinguish strands, and mixes peaks on different strands)
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 

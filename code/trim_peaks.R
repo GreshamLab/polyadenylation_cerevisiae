@@ -8,15 +8,16 @@ if (!dir.exists(snakemake@params[[1]])) {
 
 #import data
 rawdata <- read.delim(snakemake@input[[1]],
-                      header = F)
-
-colnames(rawdata) = c("chromosome", 
-                      "peak_start",
-                      "peak_end",
-                      "peak_name",
-                      "gene_name",
-                      "position",
-                      "depth")
+                      header = F,
+                      col.names = c("chromosome", 
+                                    "peak_start",
+                                    "peak_end",
+                                    "peak_name",
+                                    "gene_name",
+                                    "position",
+                                    "depth"
+                                    )
+                      )
 
 df <- rawdata %>%
   mutate(peak_name = as.factor(peak_name)) %>%
@@ -29,6 +30,15 @@ df <- rawdata %>%
   group_by(gene_name) %>% 
   filter(n() > 1) #remove genes with 1 peak only
   
+print(paste("Genes with multiple peaks BEFORE removing low coverage:", 
+            length(unique(rawdata$gene_name))
+            )
+      )
+
+print(paste("Genes with multiple peaks AFTER filtering:", 
+            length(unique(df$gene_name))
+            )
+      )
 
 write_delim(df,
             snakemake@output[[1]], 

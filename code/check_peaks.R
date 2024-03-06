@@ -1,11 +1,13 @@
 #Load packages
 library(tidyverse)
 
+print("Now filtering peaks...")
+
 #make dir where to save files
 if (!dir.exists(snakemake@params[[1]])) {
   dir.create(snakemake@params[[1]])
   }
-
+      
 #import peak file
 rawdata <- read.csv2(snakemake@input[[1]],
                      sep = "\t",
@@ -59,7 +61,7 @@ duplicated <- gtf %>%
   summarise(n = n(), .groups = "drop") %>%
   filter(n > 1L)
 
-print("These genes have duplicated start codons")
+print("These genes have duplicated start codons and will be removed from GTF file")
 print(duplicated)
 
 #Pivot the gtf file
@@ -149,7 +151,7 @@ peaks %>%
                  ncol = 2)
 dev.off()
 
-#How many peaks are assigned to more than one gene
+#How many peaks are assigned to more than one gene?
   #Peaks can be broad and can overlap with multiple genes. When this happens, 
   #a single peak (with unique peak name) will be assigned to multiple genes. 
   #For example peak_1 might be assigned to gene A and gene B. 
@@ -159,7 +161,7 @@ tmp <- as.data.frame(table(peaks$peak_name))
 tmp <- as.data.frame(table(tmp$Freq))
 colnames(tmp) <- c("genes_assigned_to_peak", 
                    "number_of_peaks")
-print("How many peaks are assigned to more than one gene")
+print("How many peaks are assigned to one or more genes?")
 tmp
 
 #Check how many genes have more than one peak
@@ -170,7 +172,7 @@ tmp <- as.data.frame(table(peaks$gene_name))
 tmp <- as.data.frame(table(tmp$Freq))
 colnames(tmp) <- c("peaks_per_gene", 
                    "frequency")
-print("Genes that have more than one peak")
+print("Genes with one or more peaks assigned")
 tmp
 
 #Filter out some peaks
@@ -182,7 +184,7 @@ tmp
   #technically overlaps - here remove these types of peaks. 
 
   #Quantify how many of these instances we have:
-  print("Peaks whose summit is too close to the TSS:")
+  print("Peaks whose summit is too close to the TSS. Removing them:")
   nrow(peaks %>% 
        filter(peak_to_transcript_start < 50))
   #Remove them
@@ -206,7 +208,7 @@ tmp
 
   tmp <- cbind(tmp1,tmp2)
   colnames(tmp) <- c("Peaks_larger_than_500", "Larger_Than_Transcript_Length")
-  print("Peaks that are too broad")
+  print("Peaks that are too broad will be removed:")
   tmp
   
   rm(list=ls(pattern="^tmp"))
@@ -218,10 +220,11 @@ tmp
   #Remove genes with only one peak
   #Now that we filtered out most of the unwanted peaks, 
   #let's find the genes with more than one peak! 
+  print("Only keeping genes with more than one peak assigned for next steps")
   peaks <- peaks %>% 
     group_by(gene_name) %>% 
     filter(n()>1)
-
+  
 
 #Save output
   #export bed with minumum amount of cols
