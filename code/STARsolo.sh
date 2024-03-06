@@ -24,13 +24,9 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 #Workflow
 rule all:
     input:
-        expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai"), sample = FASTQ_FILE, strand = orientation),
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_peaks.narrowPeak"), sample = FASTQ_FILE, strand = strand)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{strand}_intersect"), sample = FASTQ_FILE, strand = strand)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}.tsv"), sample = FASTQ_FILE, strand = strand)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{strand}_sorted"), sample = FASTQ_FILE, strand = strand)
-        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{strand}"), sample = FASTQ_FILE, strand = strand)
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv"), sample = FASTQ_FILE, strand = orientation)
+        directory(os.path.join(f"{OUTPUT_PATH}", f"star_index"))
+        #expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai"), sample = FASTQ_FILE, strand = orientation),
+        #expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv"), sample = FASTQ_FILE, strand = orientation)
 
     threads: THREADS
 
@@ -47,6 +43,7 @@ rule build_genome_index:
     shell:
         """
             mkdir -p {output}
+            cd {output}
 
             {STAR_PATH}/STAR \
              --runThreadN {THREADS} \
@@ -57,7 +54,8 @@ rule build_genome_index:
              --sjdbOverhang 100 \
              --genomeSAindexNbases 10 `#calculated for small genomes as log2(GenomeLength)/2 - 1`\
              --outFileNamePrefix genome_index
-
+            
+            cd {CODE_FOLDER}
         """
 
 rule map_fastq_to_genome:
