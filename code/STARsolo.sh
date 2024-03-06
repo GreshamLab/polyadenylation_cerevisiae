@@ -100,7 +100,12 @@ rule map_fastq_to_genome:
 
         """
 
-rule split_strands: #split reads that align to positive and negative strand (MACS3 does not distinguish strands, and mixes peaks on different strands)
+rule split_strands: 
+    #split reads that align to positive and negative strand (MACS3 does not 
+    #distinguish strands, and mixes peaks on different strands when doing 
+    #peak calling, ending up in reads that map on opposite strand being
+    #assigned to the same peak, while it should be two separate peaks)
+
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
@@ -120,7 +125,9 @@ rule split_strands: #split reads that align to positive and negative strand (MAC
 
         """
 
-rule sort_bam_files: #samtools works faster than STAR for sorting
+rule sort_bam_files: 
+    #samtools works faster than STAR for sorting
+    
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned_{strand}.out.bam")
 
@@ -138,7 +145,9 @@ rule sort_bam_files: #samtools works faster than STAR for sorting
 
         """
 
-rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
+rule index_bam_files_for_IGV: 
+    #index the sorted.bam file for IGV
+    
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam")
 
@@ -160,7 +169,11 @@ rule index_bam_files_for_IGV: #index the sorted.bam file for IGV
 
         """
 
-rule find_peaks: #looks at reads in bam file and finds peaks
+rule find_peaks: 
+    #MACS3 callpeak takes the reads aligned in bam file and it finds enriched 
+    #areas where transcripts align. It find peaks where reads align and calculates
+    #their start, end, pval, fold change (vs background) and so on. 
+    
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam"),
 
@@ -185,7 +198,10 @@ rule find_peaks: #looks at reads in bam file and finds peaks
 
         """
 
-rule bedtools_intersect: #intersect peak location with the gene name
+rule bedtools_intersect: 
+    #MACS3 only outputs chromosome, start, end of peak, but no gene name. Here we 
+    #intersect peak location with the gene name to add gene name metadata to table
+   
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
@@ -207,7 +223,13 @@ rule bedtools_intersect: #intersect peak location with the gene name
             cd {CODE_FOLDER}
         """
 
-rule filter_interesting_peaks: #filter which peaks to retain for further analysis
+rule filter_interesting_peaks: 
+    #This rule calculates transcript length, peak summit position, peak width,
+    #peak distance to transcript start/end/start codon/stop codon. Based on these
+    #info it removes peaks whose summit is too close to the TSS, peaks that are 
+    #too broad, and only keeps genes to which two or more peaks are assigned. Genes
+    #with only one peak are removed to speed up coverage
+
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{strand}_intersect"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_GTF}")
@@ -225,7 +247,9 @@ rule filter_interesting_peaks: #filter which peaks to retain for further analysi
     script:
         "check_peaks.R"
 
-rule sort_filtered_peaks: #sort bed file in the same way genome and bam files are
+rule sort_filtered_peaks: 
+    #sort bed file in the same way genome and bam files are
+    
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}.tsv"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
@@ -241,7 +265,10 @@ rule sort_filtered_peaks: #sort bed file in the same way genome and bam files ar
 
         """
 
-rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim peaks
+rule calculate_seq_depth: 
+    #calculate sequencing depth at each position for each feature. Coverage
+    #will be used in the next rule to trim the tails of the peaks 
+
     input:
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{strand}_sorted"),
@@ -266,6 +293,11 @@ rule calculate_seq_depth: #calculate sequencing depth, and later use it to trim 
         """
 
 rule trim_peaks: 
+    #based on the coverage for each nucleotide position, removes reads whose
+    #coverage is below 25% of the max coverage for that gene. This is done to 
+    # remove peak tails but also to remove very small peaks. The rule then 
+    #calculates the peak area for each gene
+    
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{strand}")
 
