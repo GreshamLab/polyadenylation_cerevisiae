@@ -25,7 +25,7 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai"), sample = FASTQ_FILE, strand = orientation),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_filtered"), sample = FASTQ_FILE, strand = orientation)
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_filtered.bed"), sample = FASTQ_FILE, strand = orientation)
 
     threads: THREADS
 
@@ -312,10 +312,7 @@ rule filter_macs3_peaks:
         os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv")
 
     output:
-        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_filtered")
-
-    params:
-        outdir = os.path.join(f"{OUTPUT_PATH}", "peaks_macs3", "")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_filtered.bed")
 
     threads: THREADS
 

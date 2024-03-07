@@ -66,7 +66,7 @@ interesting_genes <- unique(df %>%
 
 interesting_genes <- df %>%
   filter(gene_name %in% interesting_genes) %>%
-  arrange(st_dev)
+  arrange(st_dev, peak_to_start_codon, gene_name)
 
 ```
 
