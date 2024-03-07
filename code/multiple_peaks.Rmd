@@ -24,9 +24,9 @@ library(tidyverse)
 # Load data and merge metadata
 
 ```{r}
-rawdata <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae2/peaks_area/RAPA1_PeakArea.tsv")
+rawdata <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae_split_strands/peaks_area/RAPA1_negative_PeakArea.tsv")
 
-metadata <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae2/peaks_filtered/RAPA1_full.tsv")
+metadata <- read.delim("/scratch/sz4633/polyadenylation_cerevisiae_split_strands/peaks_filtered/RAPA1_negative_full.tsv")
 
 df <- merge(rawdata, metadata, by = c("chromosome",
                                      "peak_start",
