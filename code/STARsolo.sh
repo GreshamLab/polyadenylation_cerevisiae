@@ -25,7 +25,7 @@ CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
 rule all:
     input:
         expand(os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam.bai"), sample = FASTQ_FILE, strand = orientation),
-        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv"), sample = FASTQ_FILE, strand = orientation)
+        expand(os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_filtered"), sample = FASTQ_FILE, strand = orientation)
 
     threads: THREADS
 
@@ -105,7 +105,6 @@ rule split_strands:
     #distinguish strands, and mixes peaks on different strands when doing 
     #peak calling, ending up in reads that map on opposite strand being
     #assigned to the same peak, while it should be two separate peaks)
-
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned.out.bam")
 
@@ -127,7 +126,6 @@ rule split_strands:
 
 rule sort_bam_files: 
     #samtools works faster than STAR for sorting
-    
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Aligned_{strand}.out.bam")
 
@@ -147,7 +145,6 @@ rule sort_bam_files:
 
 rule index_bam_files_for_IGV: 
     #index the sorted.bam file for IGV
-    
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam")
 
@@ -173,7 +170,6 @@ rule find_peaks:
     #MACS3 callpeak takes the reads aligned in bam file and it finds enriched 
     #areas where transcripts align. It find peaks where reads align and calculates
     #their start, end, pval, fold change (vs background) and so on. 
-    
     input:
         os.path.join(f"{OUTPUT_PATH}", "{sample}/Sorted_{strand}.bam"),
 
@@ -201,7 +197,6 @@ rule find_peaks:
 rule bedtools_intersect: 
     #MACS3 only outputs chromosome, start, end of peak, but no gene name. Here we 
     #intersect peak location with the gene name to add gene name metadata to table
-   
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_peaks.narrowPeak"),
         os.path.join(f"{INTERSECT_FILE}")
@@ -229,7 +224,6 @@ rule filter_interesting_peaks:
     #info it removes peaks whose summit is too close to the TSS, peaks that are 
     #too broad, and only keeps genes to which two or more peaks are assigned. Genes
     #with only one peak are removed to speed up coverage
-
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect/{sample}_{strand}_intersect"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_GTF}")
@@ -249,7 +243,6 @@ rule filter_interesting_peaks:
 
 rule sort_filtered_peaks: 
     #sort bed file in the same way genome and bam files are
-    
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}.tsv"),
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}")
@@ -267,8 +260,7 @@ rule sort_filtered_peaks:
 
 rule calculate_seq_depth: 
     #calculate sequencing depth at each position for each feature. Coverage
-    #will be used in the next rule to trim the tails of the peaks 
-
+    #will be used in the next rule to trim the tails of the peaks
     input:
         os.path.join(f"{GENOME_PATH}", f"{GENOME_SORTED}"),
         os.path.join(f"{OUTPUT_PATH}", "peaks_bedtools_intersect_sorted/{sample}_{strand}_sorted"),
@@ -297,7 +289,6 @@ rule trim_peaks:
     #coverage is below 25% of the max coverage for that gene. This is done to 
     # remove peak tails but also to remove very small peaks. The rule then 
     #calculates the peak area for each gene
-    
     input:
         os.path.join(f"{OUTPUT_PATH}", "peaks_seq_depth/{sample}_{strand}")
 
@@ -312,3 +303,24 @@ rule trim_peaks:
     script:
         "trim_peaks.R"
 
+rule filter_macs3_peaks:
+    #Many peaks originally called by macs3 have now been removed, but when
+    #loading them in IGV they still appear since they are in the original
+    #dataframe. Here I remove them so those peaks will not be loaded in IGV.
+    input:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_peaks.narrowPeak"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_area/{sample}_{strand}_PeakArea.tsv")
+
+    output:
+        os.path.join(f"{OUTPUT_PATH}", "peaks_macs3/{sample}_{strand}_filtered")
+
+    params:
+        outdir = os.path.join(f"{OUTPUT_PATH}", "peaks_macs3", "")
+
+    threads: THREADS
+
+    shell:
+        """
+            awk 'NR==FNR{{a[$4]; next}} $4 in a' "{input[1]}" "{input[0]}" > "{output}"
+
+        """
