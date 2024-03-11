@@ -5,11 +5,9 @@ GENOME_SORTED = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt"
 GENOME_GTF = "Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf"
 
 FASTQ_PATH = "/scratch/cgsb/gresham/Chris/RAPA_SINGLE_CELL_FASTQ"
-FASTQ_FILE = ["RAPA1" ] #, "RAPA2"] #, "RAPA3", "RAPA4", 
-              #"RAPA5", "RAPA6", "RAPA7", "RAPA8",
-              #"RAPA_REP2_1", "RAPA_REP2_2", "RAPA_REP2_3", "RAPA_REP2_4",
-              #"RAPA_REP2_5", "RAPA_REP2_6", "RAPA_REP2_7", "RAPA_REP2_8"
-            #]
+FASTQ_FILE = ["RAPA1" , "RAPA2" , "RAPA3", "RAPA4", "RAPA5", "RAPA6", "RAPA7", 
+              "RAPA8","RAPA_REP2_1", "RAPA_REP2_2", "RAPA_REP2_3", "RAPA_REP2_4",
+              "RAPA_REP2_5", "RAPA_REP2_6", "RAPA_REP2_7", "RAPA_REP2_8"]
 orientation = ["positive" , "negative"]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"

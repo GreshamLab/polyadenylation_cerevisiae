@@ -9,7 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=16
 #SBATCH --mem=160000
-#SBATCH --time 23:59:00
+#SBATCH --time 47:59:00
 
 module purge
 module load snakemake/6.12.3
