@@ -102,10 +102,11 @@ peaks <- rawdata %>%
   #Peak to transcript start
   #Peak to transcript end
   #Peak to start codon
-  #Peak to end codon
+  #Peak to stop codon
+  #Peak to stop codon normalised based on gene length
 
 peaks <- peaks %>% 
-  mutate(transcript_length = end_transcript - start_transcript,
+  mutate(transcript_length = abs(stop_codon - start_codon),
          abs_peak_summit = peak_start + relative_summit_position_to_peak_start,
          peak_width = peak_end - peak_start, 
          peak_to_transcript_start =
@@ -123,7 +124,9 @@ peaks <- peaks %>%
          peak_to_stop_codon = 
            ifelse(strand == "+",
                   stop_codon - abs_peak_summit,
-                  abs_peak_summit - stop_codon))
+                  abs_peak_summit - stop_codon),
+         peak_to_stop_codon_normalised =
+           peak_to_stop_codon/transcript_length)
 
 # Check distributions
 
@@ -139,15 +142,16 @@ peaks %>%
                "peak_to_transcript_start",
                "peak_to_transcript_end",
                "peak_to_start_codon",
-               "peak_to_stop_codon")) %>%
+               "peak_to_stop_codon",
+               "peak_to_stop_codon_normalised")) %>%
       pivot_longer(!gene_name, 
                    names_to = "variable",
                    values_to = "values") %>%
       ggplot(aes(x = values)) + 
       geom_histogram(bins = 500) +
-      xlim(-2000,4000) +
+      #xlim(-2000,4000) +
       facet_wrap(~variable,
-                 scales = "free_y",
+                 scales = "free",
                  ncol = 2)
 dev.off()
 
