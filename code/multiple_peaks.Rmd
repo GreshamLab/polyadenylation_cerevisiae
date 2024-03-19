@@ -14,6 +14,9 @@ knit: (function(inputFile, encoding) {
 
 ---
 
+After running the snakemake pipeline, this file can be used to extract interesting genes and peaks from the output data. 
+In this script, I first import data and metadata (the script is set up for working on one file at the time right now, but can easily be scaled to all files using the map/map2 functions from the purrr package) and merge them. I then try to extract the most interesting genes/peaks and the visualize them on IGV.
+
 # Load packages
 
 ```{r, message=FALSE}
@@ -36,7 +39,7 @@ df <- merge(rawdata, metadata, by = c("chromosome",
 
 ```
 
-Check how many peaks are assigned to genes
+Check how many peaks are assigned to genes. Remember that in previous steps of the pipeline I removed genes with only one peak assigned. I did that because it speeds up calculating the coverage. 
 
 ```{r}
 tmp <- as.data.frame(table(df$gene_name))
@@ -46,27 +49,28 @@ tmp
 
 ```
 
-Calculate the sd of the genes, to see which ones are the most similar/different.
+Calculate the sd of the peaks area assigned to each of the genes. The sd expresses which genes have most similar/different peak areas. I also calculate how many peaks are assigned to each gene. 
 
 ```{r}
 df <- df %>% 
   group_by(gene_name) %>%
-  mutate(st_dev = sd(peak_area),
-         freq = n()) %>% #calculate difference between peak areas
+  mutate(st_dev = sd(peak_area), #calculate difference between peak areas
+         freq = n()) %>% #calculate how many peaks are assigned to each gene
   ungroup()
 
 ```
 
-Then extract top 100 genes for area, and sort by their sd. get the ones with lower sd. check them on IGV 
+Then extract top 100 genes for area, and sort them by their sd and distance from stop codon. Then I can check some of these genes on IGV.
 
 ```{r}
+#extract top 100 genes for area
 interesting_genes <- unique(df %>%
                               arrange(desc(peak_area)) %>%
                               pull(gene_name))[1:50]
-
+#sort them
 interesting_genes <- df %>%
   filter(gene_name %in% interesting_genes) %>%
-  arrange(st_dev, peak_to_start_codon, gene_name)
+  arrange(st_dev, peak_to_stop_codon, gene_name)
 
 ```
 
