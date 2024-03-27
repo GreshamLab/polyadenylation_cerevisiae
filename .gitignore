@@ -2,6 +2,5 @@
 /results
 /code/.snakemake
 /code/snake_out
-/code/star_executable/STAR
 /code/snake.*
 /code/genome_indexLog.out
