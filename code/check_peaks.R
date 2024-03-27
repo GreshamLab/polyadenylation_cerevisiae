@@ -125,8 +125,10 @@ peaks <- peaks %>%
            ifelse(strand == "+",
                   stop_codon - abs_peak_summit,
                   abs_peak_summit - stop_codon),
-         peak_to_stop_codon_normalised =
-           peak_to_stop_codon/transcript_length)
+         peak_to_start_codon_normalized = peak_to_start_codon/transcript_length*1000,
+         peak_to_stop_codon_normalised = peak_to_stop_codon/transcript_length*1000,
+         peak_to_transctipt_start_normalized = peak_to_transcript_start/transcript_length*1000,
+         peak_to_transcript_end_normalized = peak_to_transcript_end/transcript_length*1000)
 
 # Check distributions
 
@@ -134,7 +136,7 @@ peaks <- peaks %>%
 png(snakemake@output[[1]], 
     units = "in", 
     width = 8, 
-    height = 4, 
+    height = 8, 
     res = 300)
 peaks %>%
       select(c("gene_name",
@@ -143,13 +145,17 @@ peaks %>%
                "peak_to_transcript_end",
                "peak_to_start_codon",
                "peak_to_stop_codon",
-               "peak_to_stop_codon_normalised")) %>%
+               "peak_to_start_codon_normalized",
+               "peak_to_stop_codon_normalised",
+               "peak_to_transctipt_start_normalized",
+               "peak_to_stop_codon_normalised",
+               "peak_to_transcript_end_normalized")) %>%
       pivot_longer(!gene_name, 
                    names_to = "variable",
                    values_to = "values") %>%
       ggplot(aes(x = values)) + 
       geom_histogram(bins = 500) +
-      #xlim(-2000,4000) +
+      xlim(-2000,4000) +
       facet_wrap(~variable,
                  scales = "free",
                  ncol = 2)
@@ -228,7 +234,35 @@ tmp
   peaks <- peaks %>% 
     group_by(gene_name) %>% 
     filter(n()>1)
-  
+
+#Plot distances after all the filtering steps
+png(snakemake@output[[4]], 
+    units = "in", 
+    width = 8, 
+    height = 8, 
+    res = 300)
+peaks %>%
+      select(c("gene_name",
+               "peak_width",
+               "peak_to_transcript_start",
+               "peak_to_transcript_end",
+               "peak_to_start_codon",
+               "peak_to_stop_codon",
+               "peak_to_start_codon_normalized",
+               "peak_to_stop_codon_normalised",
+               "peak_to_transctipt_start_normalized",
+               "peak_to_stop_codon_normalised",
+               "peak_to_transcript_end_normalized")) %>%
+      pivot_longer(!gene_name, 
+                   names_to = "variable",
+                   values_to = "values") %>%
+      ggplot(aes(x = values)) + 
+      geom_histogram(bins = 500) +
+      xlim(-2000,4000) +
+      facet_wrap(~variable,
+                 scales = "free",
+                 ncol = 2)
+dev.off()
 
 #Save output
   #export bed with minumum amount of cols

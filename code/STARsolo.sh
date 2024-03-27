@@ -229,7 +229,8 @@ rule filter_interesting_peaks:
     output:
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}_plot.png"),
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}.tsv"),
-        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}_full.tsv")
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}_full.tsv"),
+        os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/{sample}_{strand}_plot_filtered.png"),
     
     params:
         os.path.join(f"{OUTPUT_PATH}", "peaks_filtered/", "")
