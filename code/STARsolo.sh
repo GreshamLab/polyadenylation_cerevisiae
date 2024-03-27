@@ -1,5 +1,5 @@
 #Parameters
-GENOME_PATH = "/home/sz4633/polyadenylation_cerevisiae/data/genome_gtf/"
+GENOME_PATH = "/scratch/cgsb/gresham/SimoneZaghen/polyadenylation_cerevisiae/data/genome_gtf/"
 GENOME_FASTA = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.toplevel.fa"
 GENOME_SORTED = "Saccharomyces_cerevisiae.R64-1-1.Marker.dna.txt"
 GENOME_GTF = "Saccharomyces_cerevisiae.R64-1-1.CLEAN.gtf"
@@ -11,13 +11,13 @@ FASTQ_FILE = ["RAPA1" , "RAPA2" , "RAPA3", "RAPA4", "RAPA5", "RAPA6", "RAPA7",
 orientation = ["positive" , "negative"]
 
 WHITELIST = "/scratch/cgsb/gresham/Chris/3M-february-2018.txt"
-INTERSECT_FILE = "/home/sz4633/polyadenylation_cerevisiae/data/Saccharomyces_cerevisiae.R64-1-1.CLEAN.bed"
+INTERSECT_FILE = "/scratch/cgsb/gresham/SimoneZaghen/polyadenylation_cerevisiae/data/Saccharomyces_cerevisiae.R64-1-1.CLEAN.bed"
 THREADS = 16
 
-OUTPUT_PATH = "/scratch/sz4633/polyadenylation_cerevisiae_split_strands/"
-TMP_DIR = "/scratch/sz4633/polyadenylation_cerevisiae_split_strands/tmp/"
-STAR_PATH = "/home/sz4633/polyadenylation_cerevisiae/code/star_executable"
-CODE_FOLDER = "/home/sz4633/polyadenylation_cerevisiae/code"
+OUTPUT_PATH = "/scratch/cgsb/gresham/SimoneZaghen/polyadenylation_cerevisiae/results"
+TMP_DIR = "/scratch/cgsb/gresham/SimoneZaghen/polyadenylation_cerevisiae/results/tmp/"
+STAR_PATH = "/scratch/cgsb/gresham/SimoneZaghen/polyadenylation_cerevisiae/code/star_executable"
+CODE_FOLDER = "/scratch/cgsb/gresham/SimoneZaghen/polyadenylation_cerevisiae/code"
 
 #Workflow
 rule all:
